@@ -1,6 +1,6 @@
 import streamlit as st
 import streamlit.components.v1 as components
-
+import pandas as pd
 # Initialize session state for button click if it doesn't exist
 if 'button_clicked' not in st.session_state:
     st.session_state.button_clicked = False
@@ -24,7 +24,8 @@ with tab1:
         # Display the first few rows of the DataFrame
         st.write("Preview of the uploaded CSV file:")
         st.write(df.head())
-    
+
+
         # Optionally, display some basic information about the DataFrame
         st.write("Data Summary:")
         st.write(f"Number of rows: {len(df)}")
