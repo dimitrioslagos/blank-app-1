@@ -418,7 +418,7 @@ def run_pfs(networks,T,cosphi,Pl,Ppv):
             X = networks[ti].line[networks[ti].line.in_service==True].x_ohm_per_km.values.astype(float)
             L = networks[ti].line[networks[ti].line.in_service==True].length_km.values.astype(float)
             Imax_y = Imax[networks[ti].line.in_service==True].values.astype(float)
-            print('From:',From)
+            print('From:',Vb)
             G, B, G_line, B_line, Zr, Zi, Wr, Wi = calcu_Y(From, To, R, X, L, Vb, Sb,n_buses,n_lines-1)
             lines, buses_max, buses_min, loading, v, losses = \
                 run_pfs_rad(Zr, Zi, Pp, Qp, B, G, Wr, Wi,
