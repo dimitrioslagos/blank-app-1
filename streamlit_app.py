@@ -66,6 +66,11 @@ with tab2:
 
     # Display HTML content in the second tab
     st.subheader("Power Flow Results")
+    # Create a list of integer options
+    options = list(range(1, Horizon+1))  # Integer options from 1 to 10
+
+    # Create a selectbox for integer selection
+    selected_value = st.selectbox("Select an integer:", options)
     try:
         with open('pandapower_network_map.html', 'r', encoding='utf-8') as file:
             html_content = file.read()
