@@ -361,8 +361,8 @@ def run_pfs(networks,T,cosphi,Pl,Ppv):
                                      (networks[0].line.to_bus==networks[0].ext_grid.loc[0,'bus'])]
 
     ####Prepare data for power flow runs
-    Sb = 1 #Base Apparent Power always 1 kV
-    Vb = networks[0].bus.vn_kv.values[0] #Base Voltage from network data
+    Vb = networks[0].bus.vn_kv.values[0]  # Base Voltage from network data
+    Sb = 1.0 #Base Apparent Power always 1 MW
     Ib = Sb/(Vb*np.sqrt(3)) #Base Current from network data
     n_buses = networks[0].bus.index.shape[0] #Number of buses
     n_lines = networks[0].line.index.shape[0] #Number of lines
