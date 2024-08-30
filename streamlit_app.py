@@ -6,7 +6,7 @@ if 'button_clicked' not in st.session_state:
     st.session_state.button_clicked = False
 
 # Create tabs
-tab1, tab2 = st.tabs(["PF Results", "Tab 2" if st.session_state.button_clicked else "Tab 2 (Locked)"])
+tab1, tab2 = st.tabs(["Topology Data Input", "Tab 2" if st.session_state.button_clicked else "Tab 2 (Locked)"])
 
 # Content for the first tab
 with tab1:
