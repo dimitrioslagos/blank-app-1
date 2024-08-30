@@ -22,7 +22,7 @@ with tab1:
         df = pd.read_excel(uploaded_file,sheet_name='Lines')
     
         # Display the first few rows of the DataFrame
-        st.write("Preview of the uploaded CSV file:")
+        st.write("Preview of Line Data:")
         st.write(df.head())
 
 
