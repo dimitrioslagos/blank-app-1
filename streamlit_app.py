@@ -45,7 +45,7 @@ with tab1:
 
 # Conditionally display content of the second tab
 
- with tab2:
+with tab2:
     st.subheader("Load Flow Results")
 
     # Display HTML content in the second tab
