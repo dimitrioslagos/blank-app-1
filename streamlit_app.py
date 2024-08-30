@@ -24,7 +24,7 @@ with tab1:
 # Display HTML content in the left column
 with tab2:
     st.subheader("Load Flow Results")
-        with open('pandapower_network_map.html', 'r', encoding='utf-8') as file:
+    with open('pandapower_network_map.html', 'r', encoding='utf-8') as file:
         html_content = file.read()
     components.html(html_content, height=300, scrolling=True)
 
