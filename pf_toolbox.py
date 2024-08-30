@@ -362,10 +362,10 @@ def run_pfs(networks,T,cosphi,Pl,Ppv):
 
     ####Prepare data for power flow runs
     Vb = networks[0].bus.vn_kv.values[0]  # Base Voltage from network data
-    Sb = 1.0 #Base Apparent Power always 1 MW
+    Sb = np.array([1.0])[0] #Base Apparent Power always 1 MW
     Ib = Sb/(Vb*np.sqrt(3)) #Base Current from network data
-    n_buses = networks[0].bus.index.shape[0] #Number of buses
-    n_lines = networks[0].line.index.shape[0] #Number of lines
+    n_buses = np.array([networks[0].bus.index.shape[0]])[0]#Number of buses
+    n_lines = np.array([networks[0].line.index.shape[0]])[0] #Number of lines
     Imax = networks[0].line.max_i_ka/Ib #maximum current per line in p.u.
     t = 8760#hours per year
     Pl.index = range(t)
