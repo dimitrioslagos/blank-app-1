@@ -35,6 +35,14 @@ with tab1:
     uploaded_file2 = st.file_uploader("Choose a csv file", type=["csv"])
     if uploaded_file2 is not None:
         PVs = get_pv_power_curves(settings_file_name='settings_spain.cfg', geodata_file=uploaded_file2)
+    st.subheader("Upload Load Curves")
+    uploaded_file3 = st.file_uploader("Choose a csv file", type=["csv"])
+    if uploaded_file3 is not None:
+        P = pd.read_csv(uploaded_file3, index_col=0)
+    st.subheader("Upload Cosphi Values")
+    uploaded_file4 = st.file_uploader("Choose a csv file", type=["csv"])
+    if uploaded_file4 is not None:
+        cosphi = pd.read_csv(uploaded_file4, index_col=0)['0']
 
     # Create a button in the first tab
     if st.button('Run Power Flow'):
