@@ -1,12 +1,13 @@
 import streamlit as st
 import streamlit.components.v1 as components
 import pandas as pd
+from fast_PF import generate_pp_net
 # Initialize session state for button click if it doesn't exist
 if 'button_clicked' not in st.session_state:
     st.session_state.button_clicked = False
 
 # Create tabs
-tab1, tab2 = st.tabs(["Topology Data Input", "Tab 2" if st.session_state.button_clicked else "Tab 2 (Locked)"])
+tab1, tab2 = st.tabs(["Topology Data Input", "Load Flow"])
 
 # Content for the first tab
 with tab1:
@@ -19,15 +20,15 @@ with tab1:
     # Check if a file has been uploaded
     if uploaded_file is not None:
         # Read the CSV file into a DataFrame
-        df = pd.read_excel(uploaded_file,sheet_name='Lines')
-        df1 = pd.read_excel(uploaded_file, sheet_name='Busses', index_col=0)
+        ##Generate Networks
+        networks = generate_pp_net(xlsx_filename=uploaded_file, settings_file='settings_spain.cfg')
     
         # Display the first few rows of the DataFrame
         st.write("Preview of Line Data:")
-        st.write(df.head())
+        st.write(networks[0].line.head())
         # Display the first few rows of the DataFrame
         st.write("Preview of Busses Data:")
-        st.write(df1.head())
+        st.write(networks[0].bus.head())
     
     else:
         st.write("Please upload a Topology  file.")
@@ -43,17 +44,14 @@ with tab1:
         st.write("Run Power Flow Analysis")
 
 # Conditionally display content of the second tab
-if st.session_state.button_clicked:
-    with tab2:
-        st.subheader("Load Flow Results")
 
-        # Display HTML content in the second tab
-        try:
-            with open('pandapower_network_map.html', 'r', encoding='utf-8') as file:
-                html_content = file.read()
-            components.html(html_content, height=300, scrolling=True)
-        except FileNotFoundError:
-            st.error("HTML file not found.")
-else:
-    st.warning("The second tab will be unlocked once you click the button in the first tab.")
+ with tab2:
+    st.subheader("Load Flow Results")
 
+    # Display HTML content in the second tab
+    try:
+        with open('pandapower_network_map.html', 'r', encoding='utf-8') as file:
+            html_content = file.read()
+        components.html(html_content, height=300, scrolling=True)
+    except FileNotFoundError:
+        st.error("HTML file not found.")
