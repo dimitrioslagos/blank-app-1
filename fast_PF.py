@@ -242,20 +242,20 @@ def plot_network_with_lf_res(netx, year_results):
 ##Generate Networks
 networks = generate_pp_net(xlsx_filename='Spain_Data.xlsx', settings_file='settings_spain.cfg')
 
-settings = read_config(filename='settings_spain.cfg')
-Horizon = ast.literal_eval(settings['horizon'])
-##Generate yearly curves
-# PV
-PVs = get_pv_power_curves(settings_file_name='settings_spain.cfg', geodata_file='topology_substation.csv')
-# Load
-P = pd.read_csv('P.csv', index_col=0)
-cosphi = pd.read_csv('coshpi.csv', index_col=0)['0']
-P.index = range(8760)
-
-load_factor = ast.literal_eval(settings['load_groth_rate'])
-
-year_results = run_pfs(networks=networks, T=Horizon, cosphi=cosphi, Pl=P, Ppv=PVs)
-plot_network_with_lf_res(networks, year_results)
+# settings = read_config(filename='settings_spain.cfg')
+# Horizon = ast.literal_eval(settings['horizon'])
+# ##Generate yearly curves
+# # PV
+# PVs = get_pv_power_curves(settings_file_name='settings_spain.cfg', geodata_file='topology_substation.csv')
+# # Load
+# P = pd.read_csv('P.csv', index_col=0)
+# cosphi = pd.read_csv('coshpi.csv', index_col=0)['0']
+# P.index = range(8760)
+#
+# load_factor = ast.literal_eval(settings['load_groth_rate'])
+#
+# year_results = run_pfs(networks=networks, T=Horizon, cosphi=cosphi, Pl=P, Ppv=PVs)
+# plot_network_with_lf_res(networks, year_results)
 
 
 
