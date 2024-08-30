@@ -1,6 +1,5 @@
 streamlit
 openpyxl
-pandapower
 folium
 geopandas
 numpy
