@@ -11,15 +11,15 @@ tab1, tab2 = st.tabs(["PF Results", "Tab 2" if st.session_state.button_clicked e
 # Content for the first tab
 with tab1:
     # Set the title of the app
-    st.title("CSV File Upload Example")
+    st.title("Topology File Upload")
 
     # Create a file uploader widget
-    uploaded_file = st.file_uploader("Choose a CSV file",  type=["xlsx", "xls"])
+    uploaded_file = st.file_uploader("Choose a excel file",  type=["xlsx", "xls"])
 
     # Check if a file has been uploaded
     if uploaded_file is not None:
         # Read the CSV file into a DataFrame
-        df = pd.read_excel(uploaded_file,sheet_name='Lines')
+        df = pd.read_excel(uploaded_pipfile,sheet_name='Lines')
     
         # Display the first few rows of the DataFrame
         st.write("Preview of the uploaded CSV file:")
