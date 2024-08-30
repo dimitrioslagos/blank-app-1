@@ -19,7 +19,7 @@ with tab1:
     # Check if a file has been uploaded
     if uploaded_file is not None:
         # Read the CSV file into a DataFrame
-        df = pd.read_excel(uploaded_pipfile,sheet_name='Lines')
+        df = pd.read_excel(uploaded_file,sheet_name='Lines')
     
         # Display the first few rows of the DataFrame
         st.write("Preview of the uploaded CSV file:")
