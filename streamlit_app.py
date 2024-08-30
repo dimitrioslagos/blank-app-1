@@ -14,7 +14,7 @@ with tab1:
     st.title("CSV File Upload Example")
 
     # Create a file uploader widget
-    uploaded_file = st.file_uploader("Choose a CSV file", type="csv")
+    uploaded_file = st.file_uploader("Choose a CSV file",  type=["xlsx", "xls"])
 
     # Check if a file has been uploaded
     if uploaded_file is not None:
