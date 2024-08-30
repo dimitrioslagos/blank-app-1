@@ -240,7 +240,7 @@ def plot_network_with_lf_res(netx, year_results):
 
 
 ##Generate Networks
-networks = generate_pp_net(xlsx_filename='Spain_Data.xlsx', settings_file='settings_spain.cfg')
+#networks = generate_pp_net(xlsx_filename='Spain_Data.xlsx', settings_file='settings_spain.cfg')
 
 # settings = read_config(filename='settings_spain.cfg')
 # Horizon = ast.literal_eval(settings['horizon'])
