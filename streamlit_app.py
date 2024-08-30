@@ -49,7 +49,7 @@ with tab1:
         cosphi = pd.read_csv(uploaded_file4, index_col=0)['0']
     load_factor = ast.literal_eval(settings['load_groth_rate'])
     Horizon = ast.literal_eval(settings['horizon'])
-
+    settings = read_config(filename='settings_spain.cfg')
 
 # Conditionally display content of the second tab
 
