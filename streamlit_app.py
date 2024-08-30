@@ -15,7 +15,7 @@ with tab1:
         st.write("Button clicked in Tab 1! Running code...")
 
         # Example code to run (e.g., a simple computation)
-        st.write(f"The result of the computation is: {result}")
+        st.write(f"The result of the computation is: {clicked}")
     else:
         st.write("Click the button to execute the code.")
 
