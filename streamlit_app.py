@@ -13,12 +13,12 @@ with tab1:
     st.subheader("First Tab - Interactive Button")
 
     # Create a button in the first tab
-    if st.button('Click Me in Tab 1'):
+    if st.button('Run Power Flow'):
         # Update session state to unlock the second tab
         st.session_state.button_clicked = True
-        st.write("Button clicked in Tab 1! Second tab is now available.")
+        st.write("Power Flow Completed")
     else:
-        st.write("Click the button to execute the code and unlock the second tab.")
+        st.write("Run Power Flow Analysis")
 
 # Conditionally display content of the second tab
 if st.session_state.button_clicked:
