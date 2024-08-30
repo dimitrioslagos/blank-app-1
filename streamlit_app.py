@@ -20,26 +20,17 @@ with tab1:
     if uploaded_file is not None:
         # Read the CSV file into a DataFrame
         df = pd.read_excel(uploaded_file,sheet_name='Lines')
+        df1 = pd.read_excel(uploaded_file, sheet_name='Busses')
     
         # Display the first few rows of the DataFrame
         st.write("Preview of Line Data:")
         st.write(df.head())
-
-
-        # Optionally, display some basic information about the DataFrame
-        st.write("Data Summary:")
-        st.write(f"Number of rows: {len(df)}")
-        st.write(f"Number of columns: {len(df.columns)}")
-        
-        # Show descriptive statistics
-        st.write("Descriptive Statistics:")
-        st.write(df.describe())
-    
-        # Optionally, you can add more operations, like plotting graphs or filtering data
-        st.write("You can add more operations here, such as data visualization or analysis.")
+        # Display the first few rows of the DataFrame
+        st.write("Preview of Busses Data:")
+        st.write(df1.head())
     
     else:
-        st.write("Please upload a CSV file.")
+        st.write("Please upload a Topology  file.")
         
         st.subheader("Calculate Load Flow")
 
