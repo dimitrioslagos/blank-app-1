@@ -20,7 +20,7 @@ with tab1:
     if uploaded_file is not None:
         # Read the CSV file into a DataFrame
         df = pd.read_excel(uploaded_file,sheet_name='Lines')
-        df1 = pd.read_excel(uploaded_file, sheet_name='Busses')
+        df1 = pd.read_excel(uploaded_file, sheet_name='Busses', index_col=0)
     
         # Display the first few rows of the DataFrame
         st.write("Preview of Line Data:")
