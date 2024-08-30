@@ -32,15 +32,17 @@ with tab1:
         
     st.subheader("Upload Geodata File")
     # Create a file uploader widget
-    uploaded_file2 = st.file_uploader("Choose a csv file", type=["csv"])
+    uploaded_file2 = st.file_uploader("Choose a csv file", type=["csv"],key=1)
     if uploaded_file2 is not None:
         PVs = get_pv_power_curves(settings_file_name='settings_spain.cfg', geodata_file=uploaded_file2)
+
     st.subheader("Upload Load Curves")
-    uploaded_file3 = st.file_uploader("Choose a csv file", type=["csv"])
+    uploaded_file3 = st.file_uploader("Choose a csv file", type=["csv"],key=2)
     if uploaded_file3 is not None:
         P = pd.read_csv(uploaded_file3, index_col=0)
+
     st.subheader("Upload Cosphi Values")
-    uploaded_file4 = st.file_uploader("Choose a csv file", type=["csv"])
+    uploaded_file4 = st.file_uploader("Choose a csv file", type=["csv"],key=3)
     if uploaded_file4 is not None:
         cosphi = pd.read_csv(uploaded_file4, index_col=0)['0']
 
