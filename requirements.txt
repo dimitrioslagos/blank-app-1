@@ -2,6 +2,5 @@ streamlit
 openpyxl
 folium
 geopandas
-numpy
 numba
 pandapower
