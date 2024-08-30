@@ -10,7 +10,37 @@ tab1, tab2 = st.tabs(["PF Results", "Tab 2" if st.session_state.button_clicked e
 
 # Content for the first tab
 with tab1:
-    st.subheader("First Tab - Interactive Button")
+    # Set the title of the app
+    st.title("CSV File Upload Example")
+
+    # Create a file uploader widget
+    uploaded_file = st.file_uploader("Choose a CSV file", type="csv")
+
+    # Check if a file has been uploaded
+    if uploaded_file is not None:
+        # Read the CSV file into a DataFrame
+        df = pd.read_csv(uploaded_file)
+    
+        # Display the first few rows of the DataFrame
+        st.write("Preview of the uploaded CSV file:")
+        st.write(df.head())
+    
+        # Optionally, display some basic information about the DataFrame
+        st.write("Data Summary:")
+        st.write(f"Number of rows: {len(df)}")
+        st.write(f"Number of columns: {len(df.columns)}")
+        
+        # Show descriptive statistics
+        st.write("Descriptive Statistics:")
+        st.write(df.describe())
+    
+        # Optionally, you can add more operations, like plotting graphs or filtering data
+        st.write("You can add more operations here, such as data visualization or analysis.")
+    
+    else:
+        st.write("Please upload a CSV file.")
+        
+        st.subheader("Calculate Load Flow")
 
     # Create a button in the first tab
     if st.button('Run Power Flow'):
