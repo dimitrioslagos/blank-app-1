@@ -1,6 +1,11 @@
 import streamlit as st
 
-st.title("🎈 My new app")
-st.write(
-    "Let's start building! For help and inspiration, head over to [docs.streamlit.io](https://docs.streamlit.io/)."
-)
+import streamlit as st
+import streamlit.components.v1 as components
+
+# Read the HTML file
+with open("example.html", "r") as file:
+    html_content = file.read()
+
+# Display the HTML in Streamlit
+components.html(html_content, height=500)  # You can adjust the height as needed
