@@ -414,10 +414,10 @@ def run_pfs(networks,T,cosphi,Pl,Ppv):
             Vmax = 1.1
             From = networks[ti].line[networks[ti].line.in_service==True].from_bus.values.astype(int)
             To = networks[ti].line[networks[ti].line.in_service==True].to_bus.values.astype(int)
-            R = networks[ti].line[networks[ti].line.in_service==True].r_ohm_per_km.values
-            X = networks[ti].line[networks[ti].line.in_service==True].x_ohm_per_km.values
-            L = networks[ti].line[networks[ti].line.in_service==True].length_km.values
-            Imax_y = Imax[networks[ti].line.in_service==True].values
+            R = networks[ti].line[networks[ti].line.in_service==True].r_ohm_per_km.values.astype(float)
+            X = networks[ti].line[networks[ti].line.in_service==True].x_ohm_per_km.values.astype(float)
+            L = networks[ti].line[networks[ti].line.in_service==True].length_km.values.astype(float)
+            Imax_y = Imax[networks[ti].line.in_service==True].values.astype(float)
             G, B, G_line, B_line, Zr, Zi, Wr, Wi = calcu_Y(From, To, R, X, L, Vb, Sb,n_buses,n_lines-1)
             lines, buses_max, buses_min, loading, v, losses = \
                 run_pfs_rad(Zr, Zi, Pp, Qp, B, G, Wr, Wi,
