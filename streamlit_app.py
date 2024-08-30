@@ -1,7 +1,7 @@
 import streamlit as st
 import streamlit.components.v1 as components
 import pandas as pd
-from fast_PF import generate_pp_net
+from fast_PF import generate_pp_net, read_config
 # Initialize session state for button click if it doesn't exist
 if 'button_clicked' not in st.session_state:
     st.session_state.button_clicked = False
@@ -22,7 +22,7 @@ with tab1:
         # Read the CSV file into a DataFrame
         ##Generate Networks
         networks = generate_pp_net(xlsx_filename=uploaded_file, settings_file='settings_spain.cfg')
-    
+        settings = read_config(filename='settings_spain.cfg')
         # Display the first few rows of the DataFrame
         st.write("Preview of Line Data:")
         st.write(networks[0].line.head())
