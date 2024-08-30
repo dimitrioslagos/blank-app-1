@@ -1,6 +1,8 @@
 import streamlit as st
 import streamlit.components.v1 as components
 import pandas as pd
+import ast
+from pf_toolbox import run_pfs
 from fast_PF import generate_pp_net, read_config, get_pv_power_curves
 # Initialize session state for button click if it doesn't exist
 if 'button_clicked' not in st.session_state:
@@ -40,26 +42,29 @@ with tab1:
     uploaded_file3 = st.file_uploader("Choose a csv file", type=["csv"],key=2)
     if uploaded_file3 is not None:
         P = pd.read_csv(uploaded_file3, index_col=0)
-
+        P.index = range(8760)
     st.subheader("Upload Cosphi Values")
     uploaded_file4 = st.file_uploader("Choose a csv file", type=["csv"],key=3)
     if uploaded_file4 is not None:
         cosphi = pd.read_csv(uploaded_file4, index_col=0)['0']
+    load_factor = ast.literal_eval(settings['load_groth_rate'])
+    Horizon = ast.literal_eval(settings['horizon'])
 
-    # Create a button in the first tab
-    if st.button('Run Power Flow'):
-        # Update session state to unlock the second tab
-        st.session_state.button_clicked = True
-        st.write("Power Flow Completed")
-    else:
-        st.write("Run Power Flow Analysis")
 
 # Conditionally display content of the second tab
 
 with tab2:
-    st.subheader("Load Flow Results")
+    # Create a button in the first tab
+    st.subheader("Calculate Power Flow")
+    if st.button('Run Power Flow'):
+        # Update session state to unlock the second tab
+        st.session_state.button_clicked = True
+        st.write("Calculating Power Flow .... ")
+        year_results = run_pfs(networks=networks, T=Horizon, cosphi=cosphi, Pl=P, Ppv=PVs)
+        st.write("Power Flow Completed")
 
     # Display HTML content in the second tab
+    st.subheader("Power Flow Results")
     try:
         with open('pandapower_network_map.html', 'r', encoding='utf-8') as file:
             html_content = file.read()
