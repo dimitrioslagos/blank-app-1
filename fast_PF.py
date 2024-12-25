@@ -7,7 +7,8 @@ import configparser
 from pf_toolbox import run_pfs
 import geopandas as gpd
 import webbrowser
-
+import numpy as np
+import plotly.express as px
 
 
 def read_config(filename='settings.cfg'):
@@ -20,11 +21,11 @@ def read_config(filename='settings.cfg'):
     return settings
 
 
-def get_pv_power_curves(settings_file_name, geodata_file):
+def get_pv_power_curves(settings_file_name, geodata):
     settings = read_config(filename=settings_file_name)
     locations_user = ast.literal_eval(settings['pv_locations'])
     powers_user = ast.literal_eval(settings['pv_powers'])
-    geodata = pd.read_csv(geodata_file, delimiter=';')
+    #geodata = pd.read_csv(geodata_file, delimiter=';')
     Power_curve = pd.DataFrame(columns=locations_user)
 
     for loc in locations_user:
@@ -67,6 +68,37 @@ def get_user_pv(settings_file_name):
     PV.loc[0, :] = years_user
     return PV
 
+def generate_boxplots(netx, year_results):
+    for it, row in netx[0].line.iterrows():
+        if it>=year_results[len(year_results)-1]['outaged_line']:
+            linex=it-1
+        else:
+            linex = it
+        df = pd.DataFrame(index=range(8760),columns=range(1,len(year_results)+1))
+        for year in df.columns:
+            df.loc[:,year]=year_results[year-1]['loading'][:,linex]
+        # Create a box plot for each year using Plotly
+        fig = px.box(df, title='Loading of ' +row['name'])
+        fig.update_layout(
+            yaxis_title='Loading (%)',  # Set x-axis label
+            xaxis_title='Year',  # Set y-axis label
+        )
+        # Save the plot as an HTML file
+        fig.write_html('Figures/boxplots/boxplot_per_year_'+row['name']+'.html')
+    for bus in netx[0].bus.index:
+        df = pd.DataFrame(index=range(8760),columns=range(1,len(year_results)+1))
+        for year in df.columns:
+            df.loc[:,year]=year_results[year-1]['v'][:,bus]
+        # Create a box plot for each year using Plotly
+        fig2 = px.box(df, title='Voltage of ' +netx[0].bus.loc[bus,'name'])
+        fig2.update_layout(
+            yaxis_title='Voltage (p.u.)',  # Set x-axis label
+            xaxis_title='Year',  # Set y-axis label
+        )
+        # Save the plot as an HTML file
+        fig2.write_html('Figures/boxplots/boxplot_per_year_'+netx[0].bus.loc[bus,'name']+'.html')
+
+    return 0
 
 def generate_pp_net(xlsx_filename, settings_file):
     data_lines_mv = pd.read_excel(xlsx_filename, sheet_name='Lines')
@@ -149,94 +181,116 @@ def generate_pp_net(xlsx_filename, settings_file):
 
 
 def plot_network_with_lf_res(netx, year_results):
-    year = len(netx) - 1
-    ##### Create a GeoDataFrame for buses
-    gdf_buses = gpd.GeoDataFrame(netx[0].bus_geodata.index,
-                                 geometry=gpd.points_from_xy(netx[0].bus_geodata.x, netx[0].bus_geodata.y),
-                                 crs="EPSG:4326")
+    for year in range(len(year_results)):
+        ##### Create a GeoDataFrame for buses
+        gdf_buses = gpd.GeoDataFrame(netx[0].bus_geodata.index,
+                                     geometry=gpd.points_from_xy(netx[0].bus_geodata.x, netx[0].bus_geodata.y),
+                                     crs="EPSG:4326")
 
-    # Initialize a folium map centered around the network's mean coordinates
-    m = folium.Map(location=[netx[0].bus_geodata.x.mean(), netx[0].bus_geodata.y.mean()], zoom_start=17)
-    for _, row in gdf_buses.iterrows():
-        name = networks[0].bus.loc[row[0], 'name']
-        maxV = year_results[year]['v'][:, row[0]].max().round(3)
-        minV = year_results[year]['v'][:, row[0]].min().round(3)
-        avegV = year_results[year]['v'][:, row[0]].mean().round(3)
-        name = name + '<br>' + 'Average Voltage:' + str(avegV) + '<br>' + 'Minimum Voltage:' + str(minV) + \
-               '<br>' + 'Maximum Voltage:' + str(maxV)
-        popup = folium.Popup(f'<b style="font-size:16px;">{name}</b>', max_width=200)
-        if (avegV <= 1.04) & (avegV >= 0.96):
-            folium.Marker(location=[row.geometry.x, row.geometry.y],
-                          popup=popup, icon=folium.Icon(color='green')).add_to(m)
-        if (avegV <= 1.08) & (avegV >= 1.04):
-            folium.Marker(location=[row.geometry.x, row.geometry.y], radius=5,
-                          popup=popup, icon=folium.Icon(color='orange')).add_to(m)
-        if (avegV >= 1.08):
-            folium.Marker(location=[row.geometry.x, row.geometry.y], radius=5,
-                          popup=popup, icon=folium.Icon(color='red')).add_to(m)
-        if (avegV <= 0.96) & (avegV >= 0.92):
-            folium.Marker(location=[row.geometry.x, row.geometry.y], radius=5,
-                          popup=popup, icon=folium.Icon(color='lightblue')).add_to(m)
-        if (avegV < 0.92):
-            folium.Marker(location=[row.geometry.x, row.geometry.y], radius=5,
-                          popup=popup, icon=folium.Icon(color='blue')).add_to(m)
-    ##Add Lines
-    netx[len(netx) - 1].line.in_service = True
-    netx[len(netx) - 1].line.loc[year_results[len(netx) - 1]['outaged_line'], 'in_service'] = False
-    for it, row in netx[len(netx) - 1].line.iterrows():
-        if row.in_service:
-            line_coordinates = [
-                [netx[0].bus_geodata.loc[row['from_bus'], 'x'], netx[0].bus_geodata.loc[row['from_bus'], 'y']],
-                [netx[0].bus_geodata.loc[row['to_bus'], 'x'], netx[0].bus_geodata.loc[row['to_bus'], 'y']]]
-            if it < year_results[len(netx) - 1]['outaged_line']:
-                maxL = year_results[year]['loading'][:, it].max().round(1)
-                minL = year_results[year]['loading'][:, it].min().round(1)
-                avegL = year_results[year]['loading'][:, it].mean().round(1)
+        # Initialize a folium map centered around the network's mean coordinates
+        m = folium.Map(location=[netx[0].bus_geodata.x.mean(), netx[0].bus_geodata.y.mean()], zoom_start=17)
+        for _, row in gdf_buses.iterrows():
+            name = netx[0].bus.loc[row[0], 'name']
+            maxV = year_results[year]['v'][:, row[0]].max().round(3)
+            minV = year_results[year]['v'][:, row[0]].min().round(3)
+            avegV = year_results[year]['v'][:, row[0]].mean().round(3)
+            name = name + '<br>' + 'Average Voltage:' + str(avegV) + '<br>' + 'Minimum Voltage:' + str(minV) + \
+                   '<br>' + 'Maximum Voltage:' + str(maxV)
+            popup = folium.Popup(f'<b style="font-size:16px;">{name}</b>', max_width=200)
+            if (avegV <= 1.04) & (avegV >= 0.96):
+                folium.Marker(location=[row.geometry.x, row.geometry.y],
+                              popup=popup, icon=folium.Icon(color='green')).add_to(m)
+            if (avegV <= 1.08) & (avegV >= 1.04):
+                folium.Marker(location=[row.geometry.x, row.geometry.y], radius=5,
+                              popup=popup, icon=folium.Icon(color='orange')).add_to(m)
+            if (avegV >= 1.08):
+                folium.Marker(location=[row.geometry.x, row.geometry.y], radius=5,
+                              popup=popup, icon=folium.Icon(color='red')).add_to(m)
+            if (avegV <= 0.96) & (avegV >= 0.92):
+                folium.Marker(location=[row.geometry.x, row.geometry.y], radius=5,
+                              popup=popup, icon=folium.Icon(color='lightblue')).add_to(m)
+            if (avegV < 0.92):
+                folium.Marker(location=[row.geometry.x, row.geometry.y], radius=5,
+                              popup=popup, icon=folium.Icon(color='blue')).add_to(m)
+        ##Add Lines
+        netx[len(netx) - 1].line.in_service = True
+        netx[len(netx) - 1].line.loc[year_results[len(netx) - 1]['outaged_line'], 'in_service'] = False
+        for it, row in netx[len(netx) - 1].line.iterrows():
+            if row.in_service:
+                line_coordinates = [
+                    [netx[0].bus_geodata.loc[row['from_bus'], 'x'], netx[0].bus_geodata.loc[row['from_bus'], 'y']],
+                    [netx[0].bus_geodata.loc[row['to_bus'], 'x'], netx[0].bus_geodata.loc[row['to_bus'], 'y']]]
+                if it < year_results[len(netx) - 1]['outaged_line']:
+                    maxL = year_results[year]['loading'][:, it].max().round(1)
+                    minL = year_results[year]['loading'][:, it].min().round(1)
+                    avegL = year_results[year]['loading'][:, it].mean().round(1)
+                else:
+                    maxL = year_results[year]['loading'][:, it - 1].max().round(1)
+                    minL = year_results[year]['loading'][:, it - 1].min().round(1)
+                    avegL = year_results[year]['loading'][:, it - 1].mean().round(1)
+                name = row['name'] + '<br>' + 'Average Loading:' + str(avegL) + '<br>' + 'Minimum Loading:' + str(minL) + \
+                       '<br>' + 'Maximum Loading:' + str(maxL)
+                popup = folium.Popup(f'<b style="font-size:16px;">{name}</b>', max_width=200)
+                # coloring
+                if maxL <= 25:
+                    color = 'blue'
+                if (maxL > 25) & (maxL <= 50):
+                    color = 'darkblue'
+                if (maxL > 50) & (maxL <= 75):
+                    color = 'yellow'
+                if (maxL > 75) & (maxL <= 100):
+                    color = 'red'
+                if maxL > 100:
+                    color = 'darkred'
+                # Create a PolyLine object with the specified geometry
+                folium.PolyLine(
+                    locations=line_coordinates,  # Pass the list of coordinates
+                    color=color,  # Line color
+                    weight=5,  # Line thickness
+                    opacity=0.7,  # Line transparency
+                    popup=popup
+                ).add_to(m)
             else:
-                maxL = year_results[year]['loading'][:, it - 1].max().round(1)
-                minL = year_results[year]['loading'][:, it - 1].min().round(1)
-                avegL = year_results[year]['loading'][:, it - 1].mean().round(1)
-            name = row['name'] + '<br>' + 'Average Loading:' + str(avegL) + '<br>' + 'Minimum Loading:' + str(minL) + \
-                   '<br>' + 'Maximum Loading:' + str(maxL)
-            popup = folium.Popup(f'<b style="font-size:16px;">{name}</b>', max_width=200)
-            # coloring
-            if maxL <= 25:
-                color = 'blue'
-            if (maxL > 25) & (maxL <= 50):
-                color = 'darkblue'
-            if (maxL > 50) & (maxL <= 75):
-                color = 'yellow'
-            if (maxL > 75) & (maxL <= 100):
-                color = 'red'
-            if maxL > 100:
-                color = 'darkred'
-            # Create a PolyLine object with the specified geometry
-            folium.PolyLine(
-                locations=line_coordinates,  # Pass the list of coordinates
-                color=color,  # Line color
-                weight=5,  # Line thickness
-                opacity=0.7,  # Line transparency
-                popup=popup
-            ).add_to(m)
-        else:
-            line_coordinates = [
-                [netx[0].bus_geodata.loc[row['from_bus'], 'x'], netx[0].bus_geodata.loc[row['from_bus'], 'y']],
-                [netx[0].bus_geodata.loc[row['to_bus'], 'x'], netx[0].bus_geodata.loc[row['to_bus'], 'y']]]
+                line_coordinates = [
+                    [netx[0].bus_geodata.loc[row['from_bus'], 'x'], netx[0].bus_geodata.loc[row['from_bus'], 'y']],
+                    [netx[0].bus_geodata.loc[row['to_bus'], 'x'], netx[0].bus_geodata.loc[row['to_bus'], 'y']]]
 
-            name = row['name'] + ' is considered out of service'
-            popup = folium.Popup(f'<b style="font-size:16px;">{name}</b>', max_width=200)
-            # Create a PolyLine object with the specified geometry
-            folium.PolyLine(
-                locations=line_coordinates,  # Pass the list of coordinates
-                color='blue',  # Line color
-                weight=5,  # Line thickness
-                opacity=0.7,  # Line transparency
-                dash_array='5, 10',
-                popup=popup
-            ).add_to(m)
-    m.save("pandapower_network_map.html")
-    webbrowser.open("pandapower_network_map.html")
+                name = row['name'] + ' is considered out of service'
+                popup = folium.Popup(f'<b style="font-size:16px;">{name}</b>', max_width=200)
+                # Create a PolyLine object with the specified geometry
+                folium.PolyLine(
+                    locations=line_coordinates,  # Pass the list of coordinates
+                    color='blue',  # Line color
+                    weight=5,  # Line thickness
+                    opacity=0.7,  # Line transparency
+                    dash_array='5, 10',
+                    popup=popup
+                ).add_to(m)
+        m.save("network_map"+str(year)+".html")
     return 0
+
+
+# def compute_flexibility_requirements(P,cosphi,tanPV, PV_curves,networks):
+#     year_results = run_pfs(networks=networks, T=1, cosphi=cosphi, tanPV=tanPV, Pl=P, Ppv=PV_curves)
+#     idsa = (year_results[0]['loading'].max(axis=1)>=100)
+#     idsb = (year_results[0]['v'].max(axis=1)>=1.1)
+#     ids2 = (year_results[0]['loading'].max(axis=1)>=99) & (year_results[0]['loading'].max(axis=1)<=100)
+#     Pnet = PV_curves.sum(axis=1) - P.sum(axis=1)
+#     LimitP = Pnet.loc[ids2].mean()
+#     Total_Flex = (Pnet[idsa]-LimitP).sum()
+#     Flex = pd.DataFrame(P.index*0.0,index=P.index,columns=['Flex'])
+#     Flex.loc[idsa,'Flex'] = (Pnet[idsa]-LimitP)
+#     Flex[Flex<=0]=0
+#     vals = []
+#     index = []
+#     for f in range(1,int((Flex.max().round(2)+0.02)*100),1):
+#         index.append(f/100)
+#         vals.append((Flex>= f / 100).sum())
+#     Flex_cdf=pd.DataFrame(vals,index=index)
+#     FlexT = pd.DataFrame( index=P.index, columns=PV_curves.columns)
+#     for pv in PV_curves.columns:
+#         FlexT.loc[:,pv] = Flex['Flex']*(PVs.loc[pv]/PVs.sum()).values[0]
+#     return Total_Flex, Flex_cdf, FlexT
 
 
 ##Generate Networks
