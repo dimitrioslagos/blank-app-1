@@ -25,6 +25,9 @@ if "cosphi_file" not in st.session_state:
 if "PowerCurvesFile" not in st.session_state:
     st.session_state.PowerCurvesFile = None
 # Initialize session state for topology file
+if "EquipmentFile" not in st.session_state:
+    st.session_state.EquipmentFile = None
+# Initialize session state for topology file
 if "configure_PV" not in st.session_state:
     st.session_state.configure_PV = False
 # Initialize session state for topology file
@@ -60,6 +63,8 @@ if "cosphi_processed" not in st.session_state:
     st.session_state.cosphi_processed = False
 if "cosphi_msg" not in st.session_state:
     st.session_state.cosphi_msg = None
+if "line_types_processed" not in st.session_state:
+    st.session_state.line_types_processed = False
 
 
 

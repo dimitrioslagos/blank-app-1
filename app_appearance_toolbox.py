@@ -192,12 +192,11 @@ def success_message(text):
         unsafe_allow_html=True)
 
 def topology_tab():
-    file_type = st.selectbox("File Format", ['xslx', 'pandapower json', 'cim'])
-    # Create a file uploader widget
-    if file_type == 'xslx':
-        uploaded_file = st.file_uploader("Choose a excel file", type=["xlsx", "xls"], key=1)
+    with st.form('Topology Upload'):
+        uploaded_file = st.file_uploader("Choose a topology file", type=["xlsx", ".json"], key=1)
         if uploaded_file is None:
             st.session_state.topology_pandas = None
+            st.session_state.topology_pandas_ready = False
         else:
             net, msg = main_code_planning_settings_topology(uploaded_file)
             if net is not None:
@@ -210,26 +209,31 @@ def topology_tab():
                         st.write("Choose a line as normally de-energized:")
                         # Add a select box inside the modal
                         de_energized_line = st.selectbox(
-                            "Options:",
-                        st.session_state.topology_pandas.line[~st.session_state.topology_pandas.line.is_stub].name.to_list()
-                        )
+                                "Options:",
+                            st.session_state.topology_pandas.line[~st.session_state.topology_pandas.line.is_stub].name.to_list()
+                            )
                         st.session_state.topology_pandas.line.loc[st.session_state.topology_pandas.line.name==
-                                                                  de_energized_line,'in_service']=False
+                                                                      de_energized_line,'in_service']=False
                 else:
                     st.session_state.topology_file = uploaded_file
                     st.session_state.topology_pandas_ready = True
-                    success_message("Topology Format is correct")
-                    if not(os.path.exists('Maps/network_map.html')):
-                        generate_diagram(st.session_state.topology_pandas)
-                    with open('Maps/network_map.html', 'r', encoding='utf-8') as file:
-                        html_content = file.read()
-                    components.html(html_content, width=1000, height=400, scrolling=True)
             else:
                 st.markdown(
-                        f'<h1 style="font-family: Verdana; '
-                        f'color: red; font-size: 12px; '
-                        f'font-weight: bold;">{msg}</h1>',
-                        unsafe_allow_html=True)
+                            f'<h1 style="font-family: Verdana; '
+                            f'color: red; font-size: 12px; '
+                            f'font-weight: bold;">{msg}</h1>',
+                            unsafe_allow_html=True)
+        submit2 = st.form_submit_button('Submit Topology File')
+        if submit2:
+            st.rerun()
+    if st.session_state.topology_pandas_ready:
+        success_message("Topology Format is correct")
+        if not(os.path.exists('Maps/network_map.html')):
+            generate_diagram(st.session_state.topology_pandas)
+            with open('Maps/network_map.html', 'r', encoding='utf-8') as file:
+                html_content = file.read()
+            components.html(html_content, width=1000, height=400, scrolling=True)
+
 
 
 
@@ -350,79 +354,98 @@ def cosphi_file_change():
     st.session_state.cosphi_processed = False
 
 def load_tab():
-    st.markdown(
-        f'<h1 style="font-family: Verdana; '
-        f'color: black; font-size: 20px; '
-        f'font-weight: bold;">{"Upload Load Curves"}</h1>',
-        unsafe_allow_html=True)
-    active_power_file = st.file_uploader("Choose a csv file", type=["csv"], key=41)
-    if active_power_file is not None:
-        if not(st.session_state.P_curve_processed):
-            st.session_state.P_curve_msg, P_curve = check_P_file(st.session_state.topology_pandas.load.name.to_list(),active_power_file)
-            if P_curve is not None:
-                P_curve.index = range(8760)
-                st.write(P_curve.head())
-                st.session_state.P_curve = P_curve
-                st.session_state.P_curve_processed = True
-                st.rerun()
-        else:
-            if st.session_state.P_curve is None:
-                error_message(st.session_state.P_curve_msg)
+    with st.form('Demand data files Upload'):
+        print('Runny....')
+        st.markdown(
+                f'<h1 style="font-family: Verdana; '
+                f'color: black; font-size: 20px; '
+                f'font-weight: bold;">{"Upload Load Curves"}</h1>',
+                unsafe_allow_html=True)
+        if st.session_state.topology_pandas_ready is not None:
+            active_power_file = st.file_uploader("Choose a csv file", type=["csv"], key=41)
+            if active_power_file is not None:
+                print('file_lines_now')
+                msg, P_curve = check_P_file(st.session_state.topology_pandas.load.name.to_list(),active_power_file)
+                st.session_state.P_curve_msg = msg
+                if P_curve is not None:
+                    P_curve.index = range(8760)
+                    st.write(P_curve.head())
+                    success_message(msg)
+                    st.session_state.P_curve = P_curve
+                    st.session_state.P_curve_processed = True
+                else:
+                    st.session_state.P_curve_processed = False
+                    error_message(msg)
+
             else:
-                success_message(st.session_state.P_curve_msg)
-    else:
-        st.session_state.P_curve = None
-        st.write('aaa')
-        if st.session_state.P_curve_processed:
-            st.session_state.P_curve_processed = False
+                st.session_state.P_curve_msg = ''
+                st.session_state.P_curve_processed = False
+
+
+
+                #Cosphi
+        st.markdown(
+                f'<h1 style="font-family: Verdana; '
+                f'color: black; font-size: 20px; '
+                f'font-weight: bold;">{"Upload Cosphi"}</h1>',
+                unsafe_allow_html=True)
+
+        cosphi_file = st.file_uploader("Choose a csv file", type=["csv"], key=42)
+        if st.session_state.topology_pandas_ready is not None:
+            if cosphi_file is not None:
+                st.session_state.cosphi_msg, cosphi = check_cosphi_file(st.session_state.topology_pandas.load.name.to_list(),
+                                                cosphi_file)
+                if (cosphi is not None):
+                    success_message(st.session_state.cosphi_msg)
+                    st.write(cosphi.head())
+                    st.session_state.cosphi = cosphi
+                    st.session_state.cosphi_processed = True
+                else:
+                    error_message(st.session_state.cosphi_msg)
+                    st.session_state.cosphi_processed = False
+            else:
+                st.session_state.cosphi_msg=''
+                st.session_state.cosphi_processed = False
+
+        submitted = st.form_submit_button('Submit Active Power & Cosphi Files')
+        print('Submitted:',submitted)
+        if submitted:
             st.rerun()
 
-
-
-
-        #Cosphi
-    st.markdown(
-        f'<h1 style="font-family: Verdana; '
-        f'color: black; font-size: 20px; '
-        f'font-weight: bold;">{"Upload Cosphi"}</h1>',
-        unsafe_allow_html=True)
-    cosphi_file = st.file_uploader("Choose a csv file", type=["csv"], key=42)
-    print('a')
-    if cosphi_file is not None:
-        print('b')
-        st.session_state.cosphi_msg, cosphi = check_cosphi_file(st.session_state.topology_pandas.load.name.to_list(),
-                                        cosphi_file)
-        if (cosphi is not None)&(not(st.session_state.cosphi_processed)):
-            print('c')
-            success_message(st.session_state.cosphi_msg)
-            st.session_state.cosphi_processed = True
-            st.write(cosphi.head())
-            st.session_state.cosphi = cosphi
-            st.session_state.cosphi_file = cosphi_file
-    else:
-        st.session_state.cosphi_msg=''
-
-    if st.session_state.cosphi is None:
-        error_message(st.session_state.cosphi_msg)
-        st.session_state.cosphi_processed = False
-    else:
-        success_message(st.session_state.cosphi_msg)
-        st.session_state.cosphi_processed = True
 
 
 
     return 0
 
 def types_tab():
-    equipment_file = st.file_uploader("Choose a csv file", type=["csv"], key=51)
-    if (equipment_file is not None):
-        msg, line_types = check_equipment_file(equipment_file)
-        if line_types is None:
-            error_message(msg)
+    with st.form('Equipment Type Upload'):
+        equipment_file = st.file_uploader("Choose a csv file", type=["csv"], key=51)
+        print('topology start')
+        if (equipment_file is not None):
+            msg, line_types = check_equipment_file(equipment_file)
+            st.session_state.line_types_msg = msg
+            print('I have file')
+            if line_types is not None:
+                print('I have file and line types')
+                st.write(line_types.head())
+                st.session_state.line_types = line_types
+                if not(st.session_state.line_types_processed):
+                    print('processed lines')
+                    success_message(st.session_state.line_types_msg)
+                    st.session_state.line_types_processed = True
+                    st.session_state.EquipmentFile = equipment_file
+            else:
+                error_message(st.session_state.line_types_msg)
         else:
-            success_message(msg)
-            st.write(line_types.head())
-            st.session_state.line_types = line_types
+            print('I do not have file')
+            st.session_state.line_types_msg = ''
+            if st.session_state.line_types_processed:
+                print('not processed lines')
+                st.session_state.line_types_processed = False
+
+        submitted_line_types = st.form_submit_button('Submit Equipment Types File')
+        if submitted_line_types:
+            st.rerun()
 
 def error_message(text):
     st.markdown(
@@ -437,9 +460,9 @@ def get_settings_progress():
         progress = progress + 0.2
     if st.session_state.topology_pandas_ready is not None:
         progress = progress + 0.2
-    if (st.session_state.cosphi is not None)&(st.session_state.P_curve is not None):
+    if (st.session_state.cosphi_processed)&(st.session_state.P_curve_processed):
         progress = progress + 0.2
-    if (st.session_state.line_types is not None):
+    if (st.session_state.line_types_processed):
         progress = progress + 0.2
     return np.round(progress,2)
 
