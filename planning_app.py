@@ -66,14 +66,20 @@ if "cosphi_msg" not in st.session_state:
 if "line_types_processed" not in st.session_state:
     st.session_state.line_types_processed = False
 
+if "scenario_configured" not in st.session_state:
+    st.session_state.scenario_configured = False
+if "lines_df" not in st.session_state:
+    st.session_state.lines_df = False
+
+
 
 
 
 init()
 
-
-if not st.session_state.logged_in:
-    login_page()
-else:
-    main_app()
+#
+# if not st.session_state.logged_in:
+#     login_page()
+# else:
+main_app()
 

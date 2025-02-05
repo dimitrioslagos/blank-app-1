@@ -6,6 +6,13 @@ import pandas as pd
 import pandapower.topology as top
 import configparser
 import ast
+import pandapower as pp
+import requests
+import folium
+import geopandas as gpd
+import plotly.express as px
+import webbrowser
+
 
 def read_config(filename='settings.cfg'):
     config = configparser.ConfigParser()
@@ -181,6 +188,130 @@ def run_pfs_rad(Zr, Zi, Pp,Qp, B, G, Wr, Wi, Pit, Qit, Vdp, Vqp, G_line, B_line,
     losses = Pit.sum().sum()#(i_sq*(G_line[G_line>0]/(G_line[G_line>0]*G_line[G_line>0]+B_line[B_line>0]*B_line[B_line>0]))).sum().sum()
     return lines, buses_max, buses_min, loading, v, losses
 
+def generate_boxplots(net, year_results,settings):
+    netx = generate_list_of_networks(settings=settings,net=net)
+    line_n = 0
+    for it, row in netx[0].line.iterrows():
+        if row.in_service:
+            df = pd.DataFrame(index=range(8760),columns=range(1,len(year_results)+1))
+            for year in df.columns:
+                df.loc[:,year]=year_results[year-1]['loading'][:,line_n]
+            line_n = line_n + 1
+        else:
+            df = pd.DataFrame(index=range(8760),columns=range(1,len(year_results)+1))
+            for year in df.columns:
+                df.loc[:, year] = year_results[year - 1]['loading'][:, 0]*0
+
+        # Create a box plot for each year using Plotly
+        fig = px.box(df, title='Loading of ' +row['name'])
+        fig.update_layout(
+            yaxis_title='Loading (%)',  # Set x-axis label
+            xaxis_title='Year',  # Set y-axis label
+        )
+        # Save the plot as an HTML file
+        fig.write_html('Figures/boxplots/boxplot_per_year_'+row['name']+'.html')
+    for bus in netx[0].bus.index:
+        df = pd.DataFrame(index=range(8760),columns=range(1,len(year_results)+1))
+        for year in df.columns:
+            df.loc[:,year]=year_results[year-1]['v'][:,bus]
+        # Create a box plot for each year using Plotly
+        fig2 = px.box(df, title='Voltage of ' +netx[0].bus.loc[bus,'name'])
+        fig2.update_layout(
+            yaxis_title='Voltage (p.u.)',  # Set x-axis label
+            xaxis_title='Year',  # Set y-axis label
+        )
+        # Save the plot as an HTML file
+        fig2.write_html('Figures/boxplots/boxplot_per_year_'+netx[0].bus.loc[bus,'name']+'.html')
+    return 0
+
+
+def plot_network_with_lf_res(net, year_results,settings):
+    netx = generate_list_of_networks(settings=settings,net=net)
+    for year in range(len(year_results)):
+        ##### Create a GeoDataFrame for buses
+        gdf_buses = gpd.GeoDataFrame(netx[0].bus_geodata.index,
+                                     geometry=gpd.points_from_xy(netx[0].bus_geodata.x, netx[0].bus_geodata.y),
+                                     crs="EPSG:4326")
+
+        # Initialize a folium map centered around the network's mean coordinates
+        m = folium.Map(location=[netx[0].bus_geodata.x.mean(), netx[0].bus_geodata.y.mean()], zoom_start=17)
+        for _, row in gdf_buses.iterrows():
+            name = netx[0].bus.loc[row[0], 'name']
+            maxV = year_results[year]['v'][:, row[0]].max().round(3)
+            minV = year_results[year]['v'][:, row[0]].min().round(3)
+            avegV = year_results[year]['v'][:, row[0]].mean().round(3)
+            name = name + '<br>' + 'Average Voltage:' + str(avegV) + '<br>' + 'Minimum Voltage:' + str(minV) + \
+                   '<br>' + 'Maximum Voltage:' + str(maxV)
+            popup = folium.Popup(f'<b style="font-size:16px;">{name}</b>', max_width=200)
+            if (avegV <= 1.04) & (avegV >= 0.96):
+                folium.Marker(location=[row.geometry.x, row.geometry.y],
+                              popup=popup, icon=folium.Icon(color='green')).add_to(m)
+            if (avegV <= 1.08) & (avegV >= 1.04):
+                folium.Marker(location=[row.geometry.x, row.geometry.y], radius=5,
+                              popup=popup, icon=folium.Icon(color='orange')).add_to(m)
+            if (avegV >= 1.08):
+                folium.Marker(location=[row.geometry.x, row.geometry.y], radius=5,
+                              popup=popup, icon=folium.Icon(color='red')).add_to(m)
+            if (avegV <= 0.96) & (avegV >= 0.92):
+                folium.Marker(location=[row.geometry.x, row.geometry.y], radius=5,
+                              popup=popup, icon=folium.Icon(color='lightblue')).add_to(m)
+            if (avegV < 0.92):
+                folium.Marker(location=[row.geometry.x, row.geometry.y], radius=5,
+                              popup=popup, icon=folium.Icon(color='blue')).add_to(m)
+        ##Add Lines
+        line_n = 0
+        for it, row in netx[len(netx) - 1].line.iterrows():
+            if row.in_service:
+                line_coordinates = [
+                    [netx[0].bus_geodata.loc[row['from_bus'], 'x'], netx[0].bus_geodata.loc[row['from_bus'], 'y']],
+                    [netx[0].bus_geodata.loc[row['to_bus'], 'x'], netx[0].bus_geodata.loc[row['to_bus'], 'y']]]
+                maxL = year_results[year]['loading'][:, line_n].max().round(1)
+                minL = year_results[year]['loading'][:, line_n].min().round(1)
+                avegL = year_results[year]['loading'][:, line_n].mean().round(1)
+                line_n = line_n + 1
+                name = row['name'] + '<br>' + 'Average Loading:' + str(avegL) + '<br>' + 'Minimum Loading:' + str(
+                        minL) + \
+                           '<br>' + 'Maximum Loading:' + str(maxL)
+                popup = folium.Popup(f'<b style="font-size:16px;">{name}</b>', max_width=200)
+
+                # coloring
+                if maxL <= 25:
+                    color = 'blue'
+                if (maxL > 25) & (maxL <= 50):
+                    color = 'darkblue'
+                if (maxL > 50) & (maxL <= 75):
+                    color = 'yellow'
+                if (maxL > 75) & (maxL <= 100):
+                    color = 'red'
+                if maxL > 100:
+                    color = 'darkred'
+                # Create a PolyLine object with the specified geometry
+                folium.PolyLine(
+                    locations=line_coordinates,  # Pass the list of coordinates
+                    color=color,  # Line color
+                    weight=5,  # Line thickness
+                    opacity=0.7,  # Line transparency
+                    popup=popup
+                ).add_to(m)
+            else:
+                line_coordinates = [
+                    [netx[0].bus_geodata.loc[row['from_bus'], 'x'], netx[0].bus_geodata.loc[row['from_bus'], 'y']],
+                    [netx[0].bus_geodata.loc[row['to_bus'], 'x'], netx[0].bus_geodata.loc[row['to_bus'], 'y']]]
+
+                name = row['name'] + ': De-energized'
+                popup = folium.Popup(f'<b style="font-size:16px;">{name}</b>', max_width=200)
+                # Create a PolyLine object with the specified geometry
+                folium.PolyLine(
+                    locations=line_coordinates,  # Pass the list of coordinates
+                    color='blue',  # Line color
+                    weight=5,  # Line thickness
+                    opacity=0.7,  # Line transparency
+                    dash_array='5, 10',
+                    popup=popup
+                ).add_to(m)
+        m.save("network_map"+str(year)+".html")
+    return 0
+
 
 
 @jit((nb.float64[:,:])(nb.float64[:], nb.float64[:], nb.int32[:], nb.int32[:], nb.float64[:,:], nb.float64[:,:]),
@@ -343,23 +474,16 @@ def get_results_of_PF_in_looped_system(path_results,ids):
 
 
 
-def run_pfs(networks,T,cosphi,Pl,Ppv):
+def run_pfs(net,cosphi,Pl,settings):
+    #Generate List of networks
+    networks = generate_list_of_networks(settings, net)
     ##Set the system to radial or get connected lines to substation
     #check if system is ok
-    settings = read_config(filename='settings_spain.cfg')
     groth_rate = 1+ast.literal_eval(settings['load_groth_rate'])
-    if len(top.unsupplied_buses(networks[0]))>=1 :
-        print("Error in topology, buses are not supplied")
-        exit()
-    ##Check if it already radial
-    if networks[0].line.shape[0]+1==networks[0].bus.shape[0]:
-        print('system is radial')
-        ids = []
-    else:
-        print('system is loop')
-        ids = networks[0].line.index[(networks[0].line.from_bus==networks[0].ext_grid.loc[0,'bus'])|
-                                     (networks[0].line.to_bus==networks[0].ext_grid.loc[0,'bus'])]
-
+    T = ast.literal_eval(settings['horizon'])
+    ##Collect data for PVs
+    geodata = get_geodata(net)
+    Ppv = get_pv_power_curves(settings, geodata=geodata)
     ####Prepare data for power flow runs
     Vb = networks[0].bus.vn_kv.values[0]  # Base Voltage from network data
     Sb = 1.0 #Base Apparent Power always 1 MW
@@ -372,17 +496,17 @@ def run_pfs(networks,T,cosphi,Pl,Ppv):
     #Pl.index = range(t) #re_index Pl from timestamps (meter data) to integer
     ###Run yearly simulations###
     ##Output Format
-    year_results = {i: {'loading': [], 'v': [], 'lines_critical': [], 'buses_critical': [], 'outaged_line': []} for i in
+    results = {i: {'loading': [], 'v': [], 'lines_critical': [], 'buses_critical': []} for i in
                     range(T)}
     ##Loop of years in horizon
     for ti in range(T):
         #Get Network structure
         # Update net P, Q in buses
         Ptot = pd.DataFrame(index=range(t), columns=networks[ti].bus.name)
-        Qtot = pd.DataFrame(columns=networks[ti].bus.name)
+        Qtot = pd.DataFrame(index=range(t), columns=networks[ti].bus.name)
         for sub in Qtot.columns:
             if sub in Pl.columns:
-                Qtot[sub] = ((groth_rate)**ti)*Pl.loc[range(t), sub] * np.tan(np.arccos(cosphi[sub]))
+                Qtot[sub] = ((groth_rate)**ti)*Pl.loc[range(t), sub] * np.tan(np.arccos(cosphi.loc[sub,'Cosphi']))
                 if (sub in Ppv.columns):
                     Ptot[sub] = ((groth_rate)**ti)*Pl.loc[range(t),sub] - Ppv.loc[range(t), sub]
                 else:
@@ -395,50 +519,155 @@ def run_pfs(networks,T,cosphi,Pl,Ppv):
 
         Pp = Ptot[Ptot.columns.drop(networks[ti].ext_grid.name.values[0])].values.astype('float')
         Qp = Qtot[Ptot.columns.drop(networks[ti].ext_grid.name.values[0])].values.astype('float')
-        #Data Format per different path of the loop
-        path_results={i:{'loading':[],'v':[],'loading_passed':[],'u_max_passed':[],'u_min_passed':[],'losses':0} for i in ids}
-        ###Run PF on different paths
-        for i in ids:
-            # Initialize data for fast PF tool
-            V_bus_initial = np.ones((t, n_buses - 1), dtype=complex)
-            V_real_initial = V_bus_initial.real
-            V_imag_initial = V_bus_initial.imag
-            P_bus_initial = np.zeros((t, n_buses))
-            Q_bus_initial = np.zeros((t, n_buses))
-            networks[ti].line['in_service'] = True
-            networks[ti].line.loc[i, 'in_service']=False
-            if len(top.unsupplied_buses(networks[ti])) >= 1:
-                print("Error in topology, buses are not supplied")
-                exit()
-            Vmin = 0.9
-            Vmax = 1.1
-            From = networks[ti].line[networks[ti].line.in_service==True].from_bus.values.astype(int)
-            To = networks[ti].line[networks[ti].line.in_service==True].to_bus.values.astype(int)
-            R = networks[ti].line[networks[ti].line.in_service==True].r_ohm_per_km.values.astype(float)
-            X = networks[ti].line[networks[ti].line.in_service==True].x_ohm_per_km.values.astype(float)
-            L = networks[ti].line[networks[ti].line.in_service==True].length_km.values.astype(float)
-            Imax_y = Imax[networks[ti].line.in_service==True].values.astype(float)
-            print('From:',type(Vb),type(Sb),type(n_buses),type(n_lines-1))
-            G, B, G_line, B_line, Zr, Zi, Wr, Wi = calcu_Y(From, To, R, X, L, Vb, Sb,n_buses,n_lines-1)
-            lines, buses_max, buses_min, loading, v, losses = \
-                run_pfs_rad(Zr, Zi, Pp, Qp, B, G, Wr, Wi,
+        # Initialize data for fast PF tool
+        V_bus_initial = np.ones((t, n_buses - 1), dtype=complex)
+        V_real_initial = V_bus_initial.real
+        V_imag_initial = V_bus_initial.imag
+        P_bus_initial = np.zeros((t, n_buses))
+        Q_bus_initial = np.zeros((t, n_buses))
+
+
+        Vmin = 0.9
+        Vmax = 1.1
+        From = networks[ti].line[networks[ti].line.in_service==True].from_bus.values.astype(int)
+        To = networks[ti].line[networks[ti].line.in_service==True].to_bus.values.astype(int)
+        R = networks[ti].line[networks[ti].line.in_service==True].r_ohm_per_km.values.astype(float)
+        X = networks[ti].line[networks[ti].line.in_service==True].x_ohm_per_km.values.astype(float)
+        L = networks[ti].line[networks[ti].line.in_service==True].length_km.values.astype(float)
+        Imax_y = Imax[networks[ti].line.in_service==True].values.astype(float)
+        G, B, G_line, B_line, Zr, Zi, Wr, Wi = calcu_Y(From, To, R, X, L, Vb, Sb,n_buses,n_lines-1)
+        lines, buses_max, buses_min, loading, v, losses = run_pfs_rad(Zr, Zi, Pp, Qp, B, G, Wr, Wi,
                             P_bus_initial,
                             Q_bus_initial, V_real_initial,
                             V_imag_initial, G_line, B_line, Imax_y, Vmin, Vmax)
-            path_results[i]['loading'] = loading
-            path_results[i]['losses'] = losses
-            path_results[i]['v'] = v
-            path_results[i]['loading_passed'] = lines
-            path_results[i]['u_max_passed'] = buses_max
-            path_results[i]['u_min_passed'] = buses_min
-        ###Compute worst case scenarion of year
-        year_results[ti] = get_results_of_PF_in_looped_system(path_results=path_results, ids=ids)
+        results[ti]['loading'] = loading
+        results[ti]['losses'] = losses
+        results[ti]['v'] = v
+        results[ti]['loading_passed'] = lines
+        results[ti]['u_max_passed'] = buses_max
+        results[ti]['u_min_passed'] = buses_min
 
 
-    return year_results
+    return results
     #netx = get_topology()
 
     #if len(ids)>=1:
 
     #else:
 
+def get_user_pv(settings):
+    locations_user = ast.literal_eval(settings['pv_locations'])
+    years_user = ast.literal_eval(settings['pv_installation_year'])
+    PV = pd.DataFrame(columns=locations_user)
+    PV.loc[0, :] = years_user
+    return PV
+
+def generate_list_of_networks(settings, net):
+    PVs = get_user_pv(settings)
+    T = ast.literal_eval(settings['horizon'])
+    networks = {i: [] for i in range(T)}
+    for i in range(T):
+        if (PVs <= i).sum().sum() >= 1:
+            net_copy = net.deepcopy()
+            for loc in PVs.columns:
+                if PVs.loc[0, loc] <= i:
+                    pp.create_sgen(net=net_copy, bus=net.bus.index[net.bus.name == loc][0], p_mw=0)
+            networks[i] = net_copy
+        else:
+            networks[i] = net
+    return networks
+
+def get_geodata(net):
+    geodata = pd.DataFrame(columns=['ID','NAME','LAT','LON'])
+    geodata['ID'] = net.bus.name
+    geodata['NAME'] = net.bus.name
+    geodata['LAT'] = net.bus_geodata.x
+    geodata['LON'] = net.bus_geodata.x
+    return geodata
+
+def get_pv_power_curves(settings, geodata):
+    locations_user = ast.literal_eval(settings['pv_locations'])
+    powers_user = ast.literal_eval(settings['pv_powers'])
+    #geodata = pd.read_csv(geodata_file, delimiter=';')
+    Power_curve = pd.DataFrame(columns=locations_user)
+
+    for loc in locations_user:
+        id = geodata.ID == locations_user[0]
+        if id.sum() == 0:
+            print(loc + " is not valid secondary substation name. PV not added")
+            continue
+        # Define the parameters
+        latitude = geodata.loc[id, 'LAT'].values[0]
+        longitude = geodata.loc[id, 'LON'].values[0]
+        startyear = 2019
+        endyear = 2019
+        optimalinclination = 1
+        outputformat = 'json'
+        pvtechchoice = 'crystSi'
+        peakpower = powers_user[locations_user.index(loc)]
+        loss = 5
+        pvcalculation = 1
+
+        # Construct the API request URL
+        url = f"https://re.jrc.ec.europa.eu/api/v5_2/seriescalc?lat={latitude}&lon={longitude}&startyear={startyear}&pvcalculation={pvcalculation}&endyear={endyear}&optimalinclination={optimalinclination}&outputformat={outputformat}&pvtechchoice={pvtechchoice}&peakpower={peakpower}&loss={loss}"
+
+        # Make the API request
+        response = requests.get(url)
+
+        # Check if the request was successful
+        if response.status_code == 200:
+            data = response.json()
+            # Extract and print the hourly PV production data
+            hourly_data = data['outputs']['hourly']
+            Power_curve[loc] = pd.DataFrame(hourly_data)['P'] / 1e6  # W to MW
+    return Power_curve
+
+def lines_coloring(value):
+  if value < 50:
+    color = 'green'
+  elif value >= 80:
+      if value >= 100:
+        color = 'red'
+      else:
+        color = 'magenta'
+  else:
+    color = 'orange'
+  return 'color: %s' % color
+
+def lines_df_presented(net,year_results):
+    df = pd.DataFrame(index=net.line.name, columns=['Maximum Loading (%)'])
+    line_n = 0
+    for it, line in net.line.iterrows():
+        if line.in_service:
+            df.loc[line['name'], 'Maximum Loading (%)'] = max([year_results[k]['loading'][:,line_n].max()
+                                                           for k in year_results.keys()])
+            line_n = line_n + 1
+        else:
+            df.loc[line['name'], 'Maximum Loading (%)'] = 0.00
+    df_lines = df.astype(float).round(1).sort_values(by=['Maximum Loading (%)'],axis=0,ascending=False)
+    df_lines = df_lines.style.map(lines_coloring)
+    return df_lines
+
+
+#
+# # Prepare input Files##
+# net = pp.from_json('topology.json')
+# Power_curves = pd.read_csv('P.csv',index_col=0, delimiter=';')
+# Power_curves.index = range(8760)
+# cosphi = pd.read_csv('coshpi.csv', index_col=0, delimiter=';')
+# settings = read_config(filename='settings_spain.cfg')
+# ##########################
+# year_results = run_pfs(net=net, cosphi=cosphi, Pl=Power_curves, settings=settings)
+# #plot_network_with_lf_res(net,year_results,settings)
+# for year in year_results.keys():
+#     year_results[year]['loading'] = year_results[year]['loading'].tolist()
+#     year_results[year]['v'] = year_results[year]['v'].tolist()
+#     year_results[year]['loading_passed'] = year_results[year]['loading_passed'].tolist()
+#     year_results[year]['u_max_passed'] = year_results[year]['u_max_passed'].tolist()
+#     year_results[year]['u_min_passed'] = year_results[year]['u_min_passed'].tolist()
+# # # #
+# print('a')
+# import json
+#
+# with open("year_results.json", "w") as outfile:
+#     json.dump(year_results, outfile)

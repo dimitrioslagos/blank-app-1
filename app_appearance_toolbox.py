@@ -4,12 +4,13 @@ import configparser
 import time
 import pandas as pd
 import ast
-from fast_PF import get_pv_power_curves
+from pf_toolbox import run_pfs, read_config, plot_network_with_lf_res,generate_boxplots,lines_df_presented
 import os
 from Service.Configuration.Topology.topology_tab_toolbox import main_code_planning_settings_topology, check_if_loops_exists,generate_diagram
 from Service.Configuration.PowerCurvesTab.PowerCurvesTabTool import check_P_file, check_cosphi_file
 from Service.Configuration.EquipmentTab.EquipmentTabTool import check_equipment_file
 import numpy as np
+import pandapower as pp
 
 users = {
     "annel": "annel123"
@@ -192,40 +193,37 @@ def success_message(text):
         unsafe_allow_html=True)
 
 def topology_tab():
-    with st.form('Topology Upload'):
-        uploaded_file = st.file_uploader("Choose a topology file", type=["xlsx", ".json"], key=1)
-        if uploaded_file is None:
-            st.session_state.topology_pandas = None
-            st.session_state.topology_pandas_ready = False
-        else:
-            net, msg = main_code_planning_settings_topology(uploaded_file)
-            if net is not None:
-                if st.session_state.topology_pandas is None:
-                    st.session_state.topology_pandas = net
-                st.session_state.topology_pandas = check_if_loops_exists(st.session_state.topology_pandas)
-                if st.session_state.topology_pandas.line[~st.session_state.topology_pandas.line.is_stub].shape[0]>=1:
-                    error_message("Distribution Network has Loop")
-                    with st.popover("System contains loop"):
-                        st.write("Choose a line as normally de-energized:")
-                        # Add a select box inside the modal
-                        de_energized_line = st.selectbox(
+    uploaded_file = st.file_uploader("Choose a topology file", type=["xlsx", ".json"], key=1)
+    if uploaded_file is None:
+        st.session_state.topology_pandas = None
+        st.session_state.topology_pandas_ready = False
+    else:
+        net, msg = main_code_planning_settings_topology(uploaded_file)
+        if net is not None:
+            if st.session_state.topology_pandas is None:
+                st.session_state.topology_pandas = net
+            st.session_state.topology_pandas = check_if_loops_exists(st.session_state.topology_pandas)
+            if st.session_state.topology_pandas.line[~st.session_state.topology_pandas.line.is_stub].shape[0]>=1:
+                error_message("Distribution Network has Loop")
+                with st.popover("System contains loop"):
+                    st.write("Choose a line as normally de-energized:")
+                    # Add a select box inside the modal
+                    de_energized_line = st.selectbox(
                                 "Options:",
                             st.session_state.topology_pandas.line[~st.session_state.topology_pandas.line.is_stub].name.to_list()
                             )
-                        st.session_state.topology_pandas.line.loc[st.session_state.topology_pandas.line.name==
+                    st.session_state.topology_pandas.line.loc[st.session_state.topology_pandas.line.name==
                                                                       de_energized_line,'in_service']=False
-                else:
-                    st.session_state.topology_file = uploaded_file
-                    st.session_state.topology_pandas_ready = True
             else:
-                st.markdown(
+                st.session_state.topology_file = uploaded_file
+                st.session_state.topology_pandas_ready = True
+        else:
+            st.markdown(
                             f'<h1 style="font-family: Verdana; '
                             f'color: red; font-size: 12px; '
                             f'font-weight: bold;">{msg}</h1>',
                             unsafe_allow_html=True)
-        submit2 = st.form_submit_button('Submit Topology File')
-        if submit2:
-            st.rerun()
+    pp.to_json(st.session_state.topology_pandas,'topology.json')
     if st.session_state.topology_pandas_ready:
         success_message("Topology Format is correct")
         if not(os.path.exists('Maps/network_map.html')):
@@ -327,25 +325,25 @@ def future_PV_config():
         if st.button('Completed Future PV units installations'):
             st.session_state.configure_PV = False
             st.rerun()
-    return PVs.shape[0]
+    return PVs
 
 def PV_tab():
-    n_PVs = future_PV_config()
-    if st.session_state.PV_curves is None:
-        if n_PVs >= 1:
-            geodata = get_geodata()
-            PVs = get_pv_power_curves(settings_file_name='settings_spain.cfg', geodata=geodata)
-            st.session_state.PV_curves = PVs
+    PVs = future_PV_config()
+    #if st.session_state.PV_curves is None:
+        #if n_PVs >= 1:
+            #geodata = get_geodata()
+            #PVs = get_pv_power_curves(settings_file_name='settings_spain.cfg', geodata=geodata)
+            #st.session_state.PV_curves = PVs
+    #else:
+    if PVs.shape[0] == 0:
+        st.session_state.PV_data = None
     else:
-        if n_PVs == 0:
-            st.session_state.PV_curves = None
-        else:
-            if n_PVs != st.session_state.PV_curves.shape[1]:
-                geodata = get_geodata()
-                PVs = get_pv_power_curves(settings_file_name='settings_spain.cfg', geodata=geodata)
-                st.session_state.PV_curves = PVs
-            else:
-                st.write(st.session_state.PV_curves)
+            # if n_PVs != st.session_state.PV_curves.shape[1]:
+            #     geodata = get_geodata()
+            #     PVs = get_pv_power_curves(settings_file_name='settings_spain.cfg', geodata=geodata)
+        st.session_state.PV_data = PVs
+            #else:
+                #st.write(st.session_state.PV_curves)
 
 def cosphi_file_change():
     print('0')
@@ -467,62 +465,16 @@ def get_settings_progress():
     return np.round(progress,2)
 
 def main_app():
-    progress = get_settings_progress()
-    st.progress(progress, text='Scenario Configuration Progress:' + str(progress*100) + '%')
     # Logout button
     if st.sidebar.button("Logout"):
         st.session_state.logged_in = False
         st.session_state.username = ""
         st.rerun()
-
     if st.session_state.activate_scenario:
-        if st.sidebar.button('Save Scenario Settings'):
-            config = configparser.ConfigParser()
-            config.read('configs/'+st.session_state.project_name+'.cfg')
-            config.set('Settings', 'horizon', value=st.session_state.horizon)
-            config.set('Settings', 'load_groth_rate', value=str(float(st.session_state.groth) / 100))
-            with open('configs/'+st.session_state.project_name+'.cfg', 'w') as configfile:
-                config.write(configfile)
-                # Save the updated configuration back to the file
-                st.markdown(
-                    f'<p style='
-                    f'color:Yellowgreen;'
-                    f'font-size:24px;border-radius:2%;">{"Scenario Saved"}</p>',
-                    unsafe_allow_html=True)
-                time.sleep(1)
-        st.markdown(
-            f'<h1 style="font-family: Verdana; '
-            f'color: black; font-size: 20px; '
-            f'font-weight: bold;">{"Scenario Configuration"}</h1>',
-            unsafe_allow_html=True)
-        if (st.session_state.topology_file is None) | (len(st.session_state.horizon)==0) | (len(st.session_state.groth)==0):
-            tabs = st.tabs(['General Planning Settings','Network Topology'])
-            with tabs[0]:
-                general_planning_settings_tab()
-            with tabs[1]:
-                topology_tab()
-            if (st.session_state.topology_file is not None) & (len(st.session_state.horizon)!=0) & (len(st.session_state.groth)!=0):
-                st.rerun()
-
+        if not(st.session_state.scenario_configured):
+            scenario_configuration()
         else:
-            print('Here2')
-            tabs = st.tabs(['Scenario Settings','Network Topology',
-                            'Future PV installations','Load Curves',
-                            'Equipment Costs & Data'])
-            with tabs[0]:
-                general_planning_settings_tab()
-            with tabs[1]:
-                topology_tab()
-            with tabs[2]:
-                PV_tab()
-            with tabs[3]:
-                load_tab()
-            with tabs[4]:
-                types_tab()
-
-
-
-
+            PF_tab()
 
     else:
         st.markdown(
@@ -567,3 +519,124 @@ def login_page():
         # Login button
         if st.button("Login"):
             click_login_button(username,password)
+
+def scenario_configuration():
+    progress = get_settings_progress()
+    st.progress(progress, text='Scenario Configuration Progress:' + str(progress*100) + '%')
+    if st.sidebar.button('Save Scenario Settings'):
+
+        config = configparser.ConfigParser()
+        config.read('configs/' + st.session_state.project_name + '.cfg')
+        config.set('Settings', 'horizon', value=st.session_state.horizon)
+        config.set('Settings', 'load_groth_rate', value=str(float(st.session_state.groth) / 100))
+        if st.session_state.PV_data is None:
+            config.set('Settings', 'pv_locations', value=[])
+            config.set('Settings', 'pv_powers', value=[])
+            config.set('Settings', 'pv_installation_year', value=[])
+        else:
+            print(st.session_state.PV_data)
+            config.set('Settings', 'pv_locations', value=str(st.session_state.PV_data['location'].to_list()))
+            config.set('Settings', 'pv_powers', value=str(st.session_state.PV_data['Nominal Power (kW)'].to_list()))
+            config.set('Settings', 'pv_installation_year', value=str(st.session_state.PV_data['Year'].to_list()))
+
+        with open('configs/' + st.session_state.project_name + '.cfg', 'w') as configfile:
+            config.write(configfile)
+            # Save the updated configuration back to the file
+            st.markdown(
+                f'<p style='
+                f'color:Yellowgreen;'
+                f'font-size:24px;border-radius:2%;">{"Scenario Saved"}</p>',
+                unsafe_allow_html=True)
+            st.session_state.scenario_configured = True
+            time.sleep(1)
+    st.markdown(
+        f'<h1 style="font-family: Verdana; '
+        f'color: black; font-size: 20px; '
+        f'font-weight: bold;">{"Scenario Configuration"}</h1>',
+        unsafe_allow_html=True)
+    if (st.session_state.topology_file is None) | (len(st.session_state.horizon) == 0) | (
+            len(st.session_state.groth) == 0):
+        tabs = st.tabs(['General Planning Settings', 'Network Topology'])
+        with tabs[0]:
+            general_planning_settings_tab()
+        with tabs[1]:
+            topology_tab()
+        if (st.session_state.topology_file is not None) & (len(st.session_state.horizon) != 0) & (
+                len(st.session_state.groth) != 0):
+            st.rerun()
+
+    else:
+        print('Here2')
+        tabs = st.tabs(['Scenario Settings', 'Network Topology',
+                        'Future PV installations', 'Load Curves',
+                        'Equipment Costs & Data'])
+        with tabs[0]:
+            general_planning_settings_tab()
+        with tabs[1]:
+            topology_tab()
+        with tabs[2]:
+            PV_tab()
+        with tabs[3]:
+            load_tab()
+        with tabs[4]:
+            types_tab()
+
+def PF_tab():
+    st.markdown(
+        f'<h1 style="font-family: Verdana; '
+        f'color: black; font-size: 20px; '
+        f'font-weight: bold;">{"Load Flow Analysis"}</h1>',
+        unsafe_allow_html=True)
+    if st.button('Run Load Flow Analysis'):
+        settings = read_config(filename='configs/' + st.session_state.project_name + '.cfg')
+        ###########################
+        year_results = run_pfs(net=st.session_state.topology_pandas,
+                               cosphi=st.session_state.cosphi, Pl=st.session_state.P_curve, settings=settings)
+        success_message('Load Flow Executed')
+        #plot_network_with_lf_res(st.session_state.topology_pandas, year_results, settings=settings)
+        generate_boxplots(net=st.session_state.topology_pandas, year_results=year_results, settings = settings)
+        plot_network_with_lf_res(net=st.session_state.topology_pandas, year_results=year_results, settings = settings)
+        st.session_state.lines_df = lines_df_presented(st.session_state.topology_pandas, year_results)
+    tabs_load_flow = st.tabs(['Analysis','Boxplot Graphs','Map'])
+    with tabs_load_flow[0]:
+        cols = st.columns(2)
+        with cols[0]:
+            st.write("Line Results")
+            st.dataframe(st.session_state.lines_df)
+    with tabs_load_flow[1]:
+        st.title("Line Results")
+        # Create a list of  options
+        options = st.session_state.topology_pandas.line.name  # Integer options from 1 to 10
+        # Create a selectbox for integer selection
+        selected_value = st.selectbox("Select the line:", options)
+        try:
+            with open('Figures/boxplots/boxplot_per_year_' + selected_value + '.html', 'r', encoding='utf-8') as file:
+                html_content = file.read()
+            components.html(html_content, width=1000, height=400, scrolling=True)
+        except FileNotFoundError:
+            st.error("HTML file not found.")
+        st.title("BUS Results")
+        # Create a list of  options
+        options = st.session_state.topology_pandas.bus.name  # Integer options from 1 to 10
+        # Create a selectbox for integer selection
+        selected_value = st.selectbox("Select the Bus:", options)
+        try:
+            with open('Figures/boxplots/boxplot_per_year_' + selected_value + '.html', 'r', encoding='utf-8') as file:
+                html_content = file.read()
+            components.html(html_content, width=1000, height=400, scrolling=True)
+        except FileNotFoundError:
+            st.error("HTML file not found.")
+    with tabs_load_flow[2]:
+        settings = read_config(filename='configs/' + st.session_state.project_name + '.cfg')
+        # Create a list of integer options
+        options = list(range(1, ast.literal_eval(settings['horizon']) + 1))  # Integer options from 1 to 10
+        # Title of the app
+        st.write("Power Flow Results on Map")
+        # Create a selectbox for integer selection
+        selected_value = st.selectbox("Select the year:", options)
+        try:
+            with open('network_map' + str(selected_value - 1) + '.html', 'r', encoding='utf-8') as file:
+                html_content = file.read()
+            components.html(html_content, width=1000, height=400, scrolling=True)
+        except FileNotFoundError:
+            st.error("HTML file not found.")
