@@ -27,7 +27,9 @@ def check_equipment_input(line_types_file):
             missing_data = missing_data + ', '+col_name
         raise ValueError("Missing Categories from .csv file:"+missing_data)
     col_classes = {'Name':str,'r_ohm_per_km':float,'x_ohm_per_km':float,'max_i_ka':float,'cost_per_km_€':float,'type':str}
+    print(Line_types)
     for col in Line_types.columns:
+        print(not(Line_types.loc[:,col].apply(lambda x: isinstance(x, col_classes[col])).all()))
         if Line_types.loc[:,col].isna().any():
             raise ValueError("Category:"+col+' contains missing values')
         if not(Line_types.loc[:,col].apply(lambda x: isinstance(x, col_classes[col])).all()):

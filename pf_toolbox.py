@@ -634,19 +634,56 @@ def lines_coloring(value):
     color = 'orange'
   return 'color: %s' % color
 
+def bus_coloring(value):
+    
+
+  if (value >= 1.1)|(value <= 0.9):
+    color = 'red'
+  if ((value >= 1.06)&(value < 1.1))|((value > 0.9)&(value <= 0.94)):
+    color = 'magenta'
+  if ((value >= 1.04)&(value < 1.06))|((value > 0.94)&(value <= 0.96)):
+    color = 'orange'
+  if (value > 0.96)&(value < 1.04):
+    color = 'green'
+  return 'color: %s' % color
+
 def lines_df_presented(net,year_results):
     df = pd.DataFrame(index=net.line.name, columns=['Maximum Loading (%)'])
     line_n = 0
     for it, line in net.line.iterrows():
         if line.in_service:
-            df.loc[line['name'], 'Maximum Loading (%)'] = max([year_results[k]['loading'][:,line_n].max()
-                                                           for k in year_results.keys()])
+            maxY = []
+            for year in year_results.keys():
+                maxY.append(year_results[year]['loading'][:,line_n].max())
             line_n = line_n + 1
+            df.loc[line['name'], 'Maximum Loading (%)'] = max(maxY)
+            if max(maxY)>=0.001:
+                df.loc[line['name'], 'Year'] = maxY.index(max(maxY))+1
         else:
             df.loc[line['name'], 'Maximum Loading (%)'] = 0.00
     df_lines = df.astype(float).round(1).sort_values(by=['Maximum Loading (%)'],axis=0,ascending=False)
-    df_lines = df_lines.style.map(lines_coloring)
+    df_lines = df_lines.style.map(lines_coloring,subset=['Maximum Loading (%)'])
     return df_lines
+
+def bus_df_presented(net,year_results):
+    df = pd.DataFrame(index=net.bus.name, columns=['Maximum Voltage (p.u.)','Minimum Voltage (p.u.)'])
+    for it, bus in net.bus.iterrows():
+        print(it)
+        maxY = []
+        minY = []
+        for year in year_results.keys():
+            maxY.append(year_results[year]['v'][:,it].max())
+            minY.append(year_results[year]['v'][:, it].min())
+        print(min(minY),max(maxY))
+        df.loc[bus['name'], 'Maximum Voltage (p.u.)'] = max(maxY)
+        df.loc[bus['name'], 'Minimum Voltage (p.u.)'] = min(minY)
+        if (max(maxY)-min(minY))**2>=(0.001)**2:
+            df.loc[bus['name'], 'Year of Max'] = maxY.index(max(maxY))+1
+            df.loc[bus['name'], 'Year of Min'] = minY.index(min(minY)) + 1
+    df_bus = df.astype(float).round(3).sort_values(by=['Minimum Voltage (p.u.)'],axis=0,ascending=False)
+    df_bus = df_bus.style.map(bus_coloring,subset=["Maximum Voltage (p.u.)", "Minimum Voltage (p.u.)"])
+    return df_bus
+
 
 
 #

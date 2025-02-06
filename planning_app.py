@@ -69,7 +69,9 @@ if "line_types_processed" not in st.session_state:
 if "scenario_configured" not in st.session_state:
     st.session_state.scenario_configured = False
 if "lines_df" not in st.session_state:
-    st.session_state.lines_df = False
+    st.session_state.lines_df = None
+if "bus_df" not in st.session_state:
+    st.session_state.lines_df = None
 
 
 

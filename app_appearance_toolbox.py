@@ -4,7 +4,7 @@ import configparser
 import time
 import pandas as pd
 import ast
-from pf_toolbox import run_pfs, read_config, plot_network_with_lf_res,generate_boxplots,lines_df_presented
+from pf_toolbox import run_pfs, read_config, plot_network_with_lf_res,generate_boxplots,lines_df_presented, bus_df_presented
 import os
 from Service.Configuration.Topology.topology_tab_toolbox import main_code_planning_settings_topology, check_if_loops_exists,generate_diagram
 from Service.Configuration.PowerCurvesTab.PowerCurvesTabTool import check_P_file, check_cosphi_file
@@ -522,7 +522,7 @@ def login_page():
 
 def scenario_configuration():
     progress = get_settings_progress()
-    st.progress(progress, text='Scenario Configuration Progress:' + str(progress*100) + '%')
+    #st.progress(progress, text='Scenario Configuration Progress:' + str(progress*100) + '%')
     if st.sidebar.button('Save Scenario Settings'):
 
         config = configparser.ConfigParser()
@@ -597,12 +597,13 @@ def PF_tab():
         generate_boxplots(net=st.session_state.topology_pandas, year_results=year_results, settings = settings)
         plot_network_with_lf_res(net=st.session_state.topology_pandas, year_results=year_results, settings = settings)
         st.session_state.lines_df = lines_df_presented(st.session_state.topology_pandas, year_results)
+        st.session_state.bus_df = bus_df_presented(st.session_state.topology_pandas, year_results)
     tabs_load_flow = st.tabs(['Analysis','Boxplot Graphs','Map'])
     with tabs_load_flow[0]:
-        cols = st.columns(2)
-        with cols[0]:
-            st.write("Line Results")
-            st.dataframe(st.session_state.lines_df)
+        st.write("Line Results")
+        st.dataframe(st.session_state.lines_df)
+        st.write("Bus Results")
+        st.dataframe(st.session_state.bus_df)
     with tabs_load_flow[1]:
         st.title("Line Results")
         # Create a list of  options
