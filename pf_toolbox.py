@@ -14,7 +14,7 @@ import plotly.express as px
 import webbrowser
 
 
-def read_config(filename='settings.cfg'):
+def read_config(filename):
     config = configparser.ConfigParser()
     config.read(filename)
     settings = {}

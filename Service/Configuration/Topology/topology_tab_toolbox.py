@@ -340,8 +340,8 @@ def generate_diagram(netx):
                         popup=popup
                     ).add_to(m)
 
-            directory = "Maps/"
-            if not os.path.exists(directory):
-                os.makedirs(directory)
-            m.save("Maps/network_map.html")
+            # directory = "Maps/"
+            # if not os.path.exists(directory):
+            #     os.makedirs(directory)
+            m.save("network_map.html")
         return 0
