@@ -10,7 +10,7 @@ from Service.Configuration.Topology.topology_tab_toolbox import main_code_planni
 from Service.Configuration.PowerCurvesTab.PowerCurvesTabTool import check_P_file, check_cosphi_file
 from Service.Configuration.EquipmentTab.EquipmentTabTool import check_equipment_file
 import numpy as np
-from optmization_toolbox import get_scenarios
+from optmization_toolbox import get_scenarios, run_cost_optimization, create_cost_analysis_graph,run_investment_defferal_optimization
 import pandapower as pp
 
 users = {
@@ -422,6 +422,8 @@ def types_tab():
             msg, line_types = check_equipment_file(equipment_file)
             st.session_state.types_msg = msg
             if line_types is not None:
+                line_types.index = line_types.Name
+                line_types.drop(columns=['Name'],inplace=True)
                 st.write(line_types.head())
                 st.session_state.line_types = line_types
                 success_message(st.session_state.types_msg)
@@ -474,13 +476,16 @@ def tab_opt_parameters():
 
 
 def planning_tab():
+    if st.sidebar.button("Scenario Configuration"):
+        st.session_state.scenario_configured = False
+        st.rerun()
     st.markdown(
         f'<h1 style="font-family: Verdana; '
         f'color: black; font-size: 20px; '
         f'font-weight: bold;">{"Scenario Planning"}</h1>',
         unsafe_allow_html=True)
     save_opt_settings()
-    Objective = st.selectbox("Select Optimization Goal", ['Cost Reduction', 'Investment Defferal',
+    Objective = st.selectbox("Select Optimization Goal", ['Cost Reduction', 'Investment Deferral',
                                                           'Optimal Investment for RES maximization'])
     check_if_ready_to_opt(Objective)
     if st.session_state.opt_settings_ready:
@@ -488,13 +493,46 @@ def planning_tab():
         with tabs_opt[0]:
             tab_opt_parameters()
         with tabs_opt[1]:
-            if 1==1:#st.session_state.opt_scenarios is None:
+            if st.session_state.opt_scenarios is None:
                 if st.button('Compute Optimization Scenarios'):
-                    settings = read_config(filename='configs/'+st.session_state.project_name+'.cfg')
+                    settings = read_config(filename='configs/' + st.session_state.project_name + '.cfg')
                     PVs = get_pv_power_curves(settings, get_geodata(st.session_state.topology_pandas))
                     success_message('Generating planning scenarios out of input files')
-                    st.session_state.opt_scenarios = get_scenarios(PVs, st.session_state.P_curve, int(st.session_state.horizon), float(st.session_state.groth), st.session_state.year_results)
-
+                    st.session_state.opt_scenarios = get_scenarios(PVs, st.session_state.P_curve, int(st.session_state.horizon), float(st.session_state.groth)/100, st.session_state.year_results)
+            if Objective=='Cost Reduction':
+                # Convert and write JSON object to file
+                if st.session_state.sol_opt_ec is None:
+                    if st.button('Compute Planning Optimization'):
+                        settings = read_config(filename='configs/' + st.session_state.project_name + '.cfg')
+                        st.write("Planning Problem Building...")
+                        sol, obj, upgrades = run_cost_optimization(net=st.session_state.topology_pandas,
+                                                                 Line_types=st.session_state.line_types,
+                                                                opt_input_scenarios=st.session_state.opt_scenarios,
+                                                                settings=settings, cosphi=st.session_state.cosphi,
+                                                                year_results=st.session_state.year_results)
+                        create_cost_analysis_graph(sol, settings, st.session_state.project_name)
+                        with open( st.session_state.project_name + '_cost_analysis.html', 'r',
+                                  encoding='utf-8') as file:
+                            html_content = file.read()
+                        components.html(html_content, width=1000, height=400, scrolling=True)
+                        st.write(upgrades)
+            if Objective=='Investment Deferral':
+                # Convert and write JSON object to file
+                if st.session_state.sol_opt_ec is None:
+                    if st.button('Compute Planning Optimization'):
+                        settings = read_config(filename='configs/' + st.session_state.project_name + '.cfg')
+                        st.write("Planning Problem Building...")
+                        sol, obj, upgrades = run_investment_defferal_optimization(net=st.session_state.topology_pandas,
+                                                                 Line_types=st.session_state.line_types,
+                                                                opt_input_scenarios=st.session_state.opt_scenarios,
+                                                                settings=settings, cosphi=st.session_state.cosphi,
+                                                                year_results=st.session_state.year_results)
+                        create_cost_analysis_graph(sol, settings, st.session_state.project_name)
+                        with open( st.session_state.project_name + '_cost_analysis.html', 'r',
+                                  encoding='utf-8') as file:
+                            html_content = file.read()
+                        components.html(html_content, width=1000, height=400, scrolling=True)
+                        st.write(upgrades)
     else:
         tabs_opt = st.tabs(['Optimization Parameters'])
         with tabs_opt[0]:
@@ -510,6 +548,15 @@ def economic_settings():
             error_message("Enter Float Value between 0-100, e.g. 3.5")
         else:
             st.session_state.inflation_rate = inflation_rate
+    year_of_investments = st.text_input("Investements applicable after year:", '')
+    if (not(str.isdigit(year_of_investments))):
+        error_message("Enter int value between 1 and "+ st.session_state.horizon)
+    else:
+        if (int(year_of_investments) > int(st.session_state.horizon))|(int(year_of_investments)<1):
+            error_message("Enter int value between 1 and "+st.session_state.horizon)
+        else:
+         st.session_state.year_of_investments = year_of_investments
+
 
     interest_rate = st.text_input("Interest Rate (%)", '')
     if not(is_float(interest_rate)):
@@ -701,6 +748,9 @@ def check_if_ready_to_opt(Objective):
     print(settings)
     print(st.session_state.project_name)
     if Objective=='Cost Reduction':
+        if settings['year_of_investments'] == '[]':
+            st.session_state.st.session_state.year_of_investments = False
+            return 0
         if settings['interest_rate'] == '[]':
             st.session_state.opt_settings_ready = False
             return 0
@@ -752,6 +802,8 @@ def save_opt_settings():
             config.set('Settings', 'res_curtailment_cost', value=st.session_state.curtailment_cost)
         if st.session_state.interest_rate is not None:
             config.set('Settings', 'interest_rate', value=st.session_state.interest_rate)
+        if st.session_state.year_of_investments is not None:
+            config.set('Settings', 'year_of_investments', value=st.session_state.year_of_investments)
         if st.session_state.inflation_rate is not None:
             config.set('Settings', 'inflation_rate', value=st.session_state.inflation_rate)
         if st.session_state.BES_max_P is not None:
@@ -856,7 +908,15 @@ def scenario_configuration():
     progress = get_settings_progress()
     #st.progress(progress, text='Scenario Configuration Progress:' + str(progress*100) + '%')
     if st.sidebar.button('Save Scenario Settings'):
-
+        st.session_state.year_results = None
+        st.session_state.opt_scenarios = None
+        st.session_state.sol_opt_ec = None
+        st.session_state.ec_upgrades = None
+        st.session_state.sol_opt_ec = None
+        st.session_state.ec_upgrades = None
+        st.session_state.move_to_planning_tab = False
+        st.session_state.bus_df = None
+        st.session_state.lines_df = None
         config = configparser.ConfigParser()
         config.read('configs/' + st.session_state.project_name + '.cfg')
         config.set('Settings', 'horizon', value=st.session_state.horizon)

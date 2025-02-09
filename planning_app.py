@@ -86,6 +86,8 @@ if "inflation_rate" not in st.session_state:
     st.session_state.inflation_rate = None
 if "interest_rate" not in st.session_state:
     st.session_state.interest_rate = None
+if "year_of_investments" not in st.session_state:
+    st.session_state.year_of_investments = None
 if "flexibility_cost" not in st.session_state:
     st.session_state.flexibility_cost = None
 if "load_shedding_cost" not in st.session_state:
@@ -123,6 +125,14 @@ if "year_results" not in st.session_state:
     st.session_state.year_results = None
 if "opt_scenarios" not in st.session_state:
     st.session_state.opt_scenarios = None
+if "sol_opt_ec" not in st.session_state:
+    st.session_state.sol_opt_ec = None
+if "ec_upgrades" not in st.session_state:
+    st.session_state.ec_upgrades = None
+if "sol_opt_inv_def" not in st.session_state:
+    st.session_state.sol_opt_ec = None
+if "inv_def_upgrades" not in st.session_state:
+    st.session_state.ec_upgrades = None
 
 init()
 

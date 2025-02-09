@@ -71,19 +71,19 @@ def check_lines_input(Line: pd.DataFrame, Bus: pd.DataFrame):
         ValueError: If the DataFrame's  is invalid.
     """
     cols_names = ['name','from_bus','to_bus','length_km','r_ohm_per_km',
-                  'x_ohm_per_km','c_nf_per_km','g_us_per_km','max_i_ka']
+                  'x_ohm_per_km','c_nf_per_km','g_us_per_km','max_i_ka','type']
 
 
     rows, cols = Line.shape
     classes = {'name':str, 'from_bus':str,'to_bus':str,'length_km':float,
                'r_ohm_per_km':float,'x_ohm_per_km':float, 'c_nf_per_km':float,'g_us_per_km':float,
-               'max_i_ka':float}
+               'max_i_ka':float,'type':str}
     classes_str = {'name':'str', 'from_bus':'str','to_bus':'str','length_km':'float',
                'r_ohm_per_km':'float','x_ohm_per_km':'float', 'c_nf_per_km':'float','g_us_per_km':'float',
-               'max_i_ka':'float'}
+               'max_i_ka':'float','type':'str'}
     #check, shape, format and data types
-    if cols != 9:
-        raise ValueError("'Lines' sheet should have 9 columns: [name, from_bus, to_bus, length_km, r_ohm_per_km,x_ohm_per_km,,c_nf_per_km,g_us_per_km,max_i_ka]")
+    if cols != 10:
+        raise ValueError("'Lines' sheet should have 10 columns: [name, from_bus, to_bus, length_km, r_ohm_per_km,x_ohm_per_km,,c_nf_per_km,g_us_per_km,max_i_ka,type]")
     else:
         for name_col in cols_names:
             if name_col not in Line.columns:
@@ -192,7 +192,8 @@ def generate_pandapower_net(Busses,GRID,SGEN,Lines):
                                            g_us_per_km=Lines.loc[new_line, 'g_us_per_km'],
                                            c_nf_per_km=Lines.loc[new_line, 'c_nf_per_km'],
                                            length_km=Lines.loc[new_line, 'length_km'],
-                                           name=Lines.loc[new_line, 'name'])
+                                           name= Lines.loc[new_line, 'name'],
+                                           type = Lines.loc[new_line, 'type'] )
         passed_lines = passed_lines + connected_lines
         # not passed busses
         pending_buses = [bus for bus in net.bus.name if bus not in passed_buses]
