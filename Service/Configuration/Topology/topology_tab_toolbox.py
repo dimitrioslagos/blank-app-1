@@ -47,12 +47,12 @@ def check_busses_input(Bus: pd.DataFrame):
     Raises:
         ValueError: If the DataFrame's shape is invalid (greater than 2 or zero in any dimension).
     """
-    cols_names = ['name','vn_kv','substation','latitude','longitude']
+    cols_names = ['name','vn_kv','substation','latitude','longitude','sn_mva']
     rows, cols = Bus.shape
-    classes = {'name':str, 'vn_kv':float, 'substation':bool,'latitude':float,'longitude':float}
-    classes_str = {'name': 'str', 'vn_kv': 'float', 'substation': 'bool', 'latitude': 'float', 'longitude': 'float'}
-    if cols != 5:
-        raise ValueError("'Busses' sheet should have 5 columns: [name,vn_kv,substation,latitude,longitude]")
+    classes = {'name':str, 'vn_kv':float, 'substation':bool,'latitude':float,'longitude':float,'sn_mva':float}
+    classes_str = {'name': 'str', 'vn_kv': 'float', 'substation': 'bool', 'latitude': 'float', 'longitude': 'float','sn_mva': 'float'}
+    if cols != 6:
+        raise ValueError("'Busses' sheet should have 5 columns: [name,vn_kv,substation,latitude,longitude,sn_mva]")
     else:
         for name_col in cols_names:
             if name_col not in Bus.columns:

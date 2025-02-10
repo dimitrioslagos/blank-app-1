@@ -10,7 +10,7 @@ from Service.Configuration.Topology.topology_tab_toolbox import main_code_planni
 from Service.Configuration.PowerCurvesTab.PowerCurvesTabTool import check_P_file, check_cosphi_file
 from Service.Configuration.EquipmentTab.EquipmentTabTool import check_equipment_file
 import numpy as np
-from optmization_toolbox import get_scenarios, run_cost_optimization, create_cost_analysis_graph,run_investment_defferal_optimization
+from optmization_toolbox import run_max_res_opt, get_scenarios, run_cost_optimization, create_cost_analysis_graph,run_investment_defferal_optimization
 import pandapower as pp
 
 users = {
@@ -137,6 +137,7 @@ res_curtailment_cost = []
 res_power_factor_limit = []
 flexibility_max_l = []
 res_flexibility_max = []
+year_of_investments = []
 """
 
     # Write the content to the file
@@ -463,15 +464,23 @@ def get_settings_progress():
         progress = progress + 0.2
     return np.round(progress,2)
 
-def tab_opt_parameters():
-    tabs_opt_settings = st.tabs(["Economic Parameters", "Flexibility Settings"])
-    config = configparser.ConfigParser()
-    # Section to modify 'general' settings
-    config.read(st.session_state.project_name + '.cfg')
-    with tabs_opt_settings[0]:
-        economic_settings()
-    with tabs_opt_settings[1]:
-        sub_tab_flex_settings()
+def tab_opt_parameters(Objective):
+    if Objective != 'Optimal Investment for RES maximization':
+        tabs_opt_settings = st.tabs(["Economic Parameters", "Flexibility Settings"])
+        config = configparser.ConfigParser()
+        # Section to modify 'general' settings
+        config.read(st.session_state.project_name + '.cfg')
+        with tabs_opt_settings[0]:
+            economic_settings()
+        with tabs_opt_settings[1]:
+            sub_tab_flex_settings()
+    else:
+        tabs_opt_settings = st.tabs(["Budget Parameters", "Flexibility Settings"])
+        with tabs_opt_settings[0]:
+            max_RES_settings()
+        with tabs_opt_settings[1]:
+            sub_tab_flex_settings()
+
 
 
 
@@ -491,7 +500,7 @@ def planning_tab():
     if st.session_state.opt_settings_ready:
         tabs_opt = st.tabs(['Optimization Parameters','Run Optimization'])
         with tabs_opt[0]:
-            tab_opt_parameters()
+            tab_opt_parameters(Objective)
         with tabs_opt[1]:
             if st.session_state.opt_scenarios is None:
                 if st.button('Compute Optimization Scenarios'):
@@ -533,10 +542,34 @@ def planning_tab():
                             html_content = file.read()
                         components.html(html_content, width=1000, height=400, scrolling=True)
                         st.write(upgrades)
+            if Objective=='Optimal Investment for RES maximization':
+                # Convert and write JSON object to file
+                if st.session_state.sol_opt_ec is None:
+                    if st.button('Compute Planning Optimization'):
+                        settings = read_config(filename='configs/' + st.session_state.project_name + '.cfg')
+                        st.write("Planning Problem Building...")
+                        sol, obj, upgrades = run_max_res_opt(net=st.session_state.topology_pandas,
+                                                                 Line_types=st.session_state.line_types,
+                                                                Psub=st.session_state.P_curve,
+                                                                settings=settings, cosphi=st.session_state.cosphi)
+                        st.write("Calculated Upgrades")
+                        st.write(upgrades)
+                        st.write("Calculated Hosting Capacity")
+                        st.write(sol)
     else:
         tabs_opt = st.tabs(['Optimization Parameters'])
         with tabs_opt[0]:
-            tab_opt_parameters()
+            tab_opt_parameters(Objective)
+
+def max_RES_settings():
+    budget_constraint = st.text_input("Budget Constraint (€)", '')
+    if not (is_float(budget_constraint)):
+        error_message("Enter Float Value between >0, e.g. 30000")
+    else:
+        if (float(budget_constraint) < 0):
+            error_message("Enter Float Value between >0, e.g. 30000")
+        else:
+            st.session_state.budget_constraint = budget_constraint
 
 def economic_settings():
     st.subheader("Optimization economic settings")
@@ -747,9 +780,9 @@ def check_if_ready_to_opt(Objective):
     settings = read_config(filename='configs/'+st.session_state.project_name+'.cfg')
     print(settings)
     print(st.session_state.project_name)
-    if Objective=='Cost Reduction':
+    if (Objective=='Cost Reduction')|(Objective=='Investment Deferral'):
         if settings['year_of_investments'] == '[]':
-            st.session_state.st.session_state.year_of_investments = False
+            st.session_state.year_of_investments = False
             return 0
         if settings['interest_rate'] == '[]':
             st.session_state.opt_settings_ready = False
@@ -785,9 +818,23 @@ def check_if_ready_to_opt(Objective):
             st.session_state.opt_settings_ready = False
             return 0
         st.session_state.opt_settings_ready = True
+    if Objective=='Optimal Investment for RES maximization':
+        if settings['budget_constraint'] == '[]':
+            st.session_state.year_of_investments = False
+            return 0
+        if settings['res_flexibility_max'] == '[]':
+            st.session_state.opt_settings_ready = False
+            return 0
+
 
 def save_opt_settings():
     if st.button('Save Planning settings'):
+        # Check if file exists
+        if not os.path.exists('configs/' + st.session_state.project_name + '.cfg'):
+            # Generate file
+            with open('configs/' + st.session_state.project_name + '.cfg', "w") as f:
+                f.write("column1,column2\n")  # Writing a header as an example
+        generate_empty_cfg('configs/' + st.session_state.project_name + '.cfg')
         config = configparser.ConfigParser()
         config.read('configs/' + st.session_state.project_name + '.cfg')
         if st.session_state.flexibility_cost is not None:
@@ -832,6 +879,8 @@ def save_opt_settings():
             config.set('Settings', 'flexibility_max_l', value=st.session_state.Load_flex_max)
         if st.session_state.RES_flex_max is not None:
             config.set('Settings', 'res_flexibility_max', value=st.session_state.RES_flex_max)
+        if st.session_state.budget_constraint is not None:
+            config.set('Settings', 'budget_constraint', value=st.session_state.budget_constraint)
 
         with open('configs/' + st.session_state.project_name + '.cfg', 'w') as configfile:
             config.write(configfile)

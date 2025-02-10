@@ -585,6 +585,8 @@ def get_geodata(net):
     geodata['LON'] = net.bus_geodata.x
     return geodata
 
+
+
 def get_pv_power_curves(settings, geodata):
     locations_user = ast.literal_eval(settings['pv_locations'])
     powers_user = ast.literal_eval(settings['pv_powers'])

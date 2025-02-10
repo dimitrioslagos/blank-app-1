@@ -120,6 +120,9 @@ if "SOC_max" not in st.session_state:
     st.session_state.soc_max = None
 if "SOC_init" not in st.session_state:
     st.session_state.soc_init = None
+if "budget_constraint" not in st.session_state:
+    st.session_state.budget_constraint = None
+
 
 if "year_results" not in st.session_state:
     st.session_state.year_results = None
