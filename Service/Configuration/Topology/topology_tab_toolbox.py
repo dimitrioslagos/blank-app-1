@@ -173,11 +173,13 @@ def generate_pandapower_net(Busses,GRID,SGEN,Lines):
             if Lines.loc[new_line, 'from_bus'] not in net.bus.name.to_list():
                 pp.create_bus(net, name=Lines.loc[new_line, 'from_bus'],
                               vn_kv=Busses.loc[Lines.loc[new_line, 'from_bus'] == Busses.name].vn_kv.values[0],
+                              sn_mva=Busses.loc[Lines.loc[new_line, 'from_bus'] == Busses.name].sn_mva.values[0],
                               geodata=(Busses.loc[Lines.loc[new_line, 'from_bus'] == Busses.name, 'latitude'].values[0],
                                        Busses.loc[Lines.loc[new_line, 'from_bus'] == Busses.name, 'longitude'].values[
                                            0]))
             if Lines.loc[new_line, 'to_bus'] not in net.bus.name.to_list():
                 pp.create_bus(net, name=Lines.loc[new_line, 'to_bus'],
+                              sn_mva=Busses.loc[Lines.loc[new_line, 'to_bus'] == Busses.name].sn_mva.values[0],
                               vn_kv=Busses.loc[Lines.loc[new_line, 'to_bus'] == Busses.name].vn_kv.values[0],
                               geodata=(Busses.loc[Lines.loc[new_line, 'to_bus'] == Busses.name, 'latitude'].values[0],
                                        Busses.loc[Lines.loc[new_line, 'to_bus'] == Busses.name, 'longitude'].values[0]))

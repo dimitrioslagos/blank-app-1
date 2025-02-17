@@ -582,7 +582,7 @@ def get_geodata(net):
     geodata['ID'] = net.bus.name
     geodata['NAME'] = net.bus.name
     geodata['LAT'] = net.bus_geodata.x
-    geodata['LON'] = net.bus_geodata.x
+    geodata['LON'] = net.bus_geodata.y
     return geodata
 
 
@@ -689,14 +689,15 @@ def bus_df_presented(net,year_results):
 
 
 #
-# # Prepare input Files##
-# net = pp.from_json('topology.json')
-# Power_curves = pd.read_csv('P.csv',index_col=0, delimiter=';')
-# Power_curves.index = range(8760)
-# cosphi = pd.read_csv('coshpi.csv', index_col=0, delimiter=';')
-# settings = read_config(filename='settings_spain.cfg')
+# Prepare input Files##
+#net = pp.from_json('topology.json')
+#net.line.loc[0,'in_service']=False
+#Power_curves = pd.read_csv('P.csv',index_col=0, delimiter=';')
+#Power_curves.index = range(8760)
+#cosphi = pd.read_csv('coshpi.csv', index_col=0, delimiter=';')
+#settings = read_config(filename='configs/test3.cfg')
 # ##########################
-# year_results = run_pfs(net=net, cosphi=cosphi, Pl=Power_curves, settings=settings)
+#year_results = run_pfs(net=net, cosphi=cosphi, Pl=Power_curves, settings=settings)
 # #plot_network_with_lf_res(net,year_results,settings)
 # for year in year_results.keys():
 #     year_results[year]['loading'] = year_results[year]['loading'].tolist()
@@ -708,5 +709,5 @@ def bus_df_presented(net,year_results):
 # print('a')
 # import json
 #
-# with open("year_results.json", "w") as outfile:
+# with open("PF_results.json", "w") as outfile:
 #     json.dump(year_results, outfile)

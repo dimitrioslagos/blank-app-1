@@ -69,6 +69,8 @@ if "line_types_processed" not in st.session_state:
     st.session_state.line_types_processed = False
 if "types_msg" not in st.session_state:
     st.session_state.types_msg = None
+if "topology_file_type" not in st.session_state:
+    st.session_state.topology_file_type = None
 
 if "scenario_configured" not in st.session_state:
     st.session_state.scenario_configured = False

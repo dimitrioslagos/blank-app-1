@@ -5,7 +5,7 @@
     "bus": {
       "_module": "pandas.core.frame",
       "_class": "DataFrame",
-      "_object": "{\"columns\":[\"name\",\"vn_kv\",\"type\",\"zone\",\"in_service\",\"on_stub\"],\"index\":[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15],\"data\":[[\"E.R. SANTA EULALIA\",5.25,\"b\",null,true,false],[\"aux_E.R. SANTA EULALIA_Covasa\",5.25,\"b\",null,true,true],[\"aux_E.R. SANTA EULALIA_E.T RIERAL\",5.25,\"b\",null,true,true],[\"E.T COVASA\",5.25,\"b\",null,true,true],[\"E.T RIERAL\",5.25,\"b\",null,true,true],[\"E.T TORRAS\",5.25,\"b\",null,true,true],[\"E.T REMEI\",5.25,\"b\",null,true,true],[\"P.T MASPONS\",5.25,\"b\",null,true,true],[\"E.T. LA BASTIDA\",5.25,\"b\",null,true,true],[\"E.T. TARRADELLAS\",5.25,\"b\",null,true,true],[\"aux_E.T REMEI_67071\",5.25,\"b\",null,true,true],[\"E.T LA SALA\",5.25,\"b\",null,true,true],[\"aux_67071\",5.25,\"b\",null,true,true],[\"E.T MARGENAT\",5.25,\"b\",null,true,true],[\"E.T. DANTA\",5.25,\"b\",null,true,true],[\"E.T BOSC DEL FORN\",5.25,\"b\",null,true,true]]}",
+      "_object": "{\"columns\":[\"name\",\"vn_kv\",\"type\",\"zone\",\"in_service\",\"sn_mva\"],\"index\":[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15],\"data\":[[\"E.R. SANTA EULALIA\",5.25,\"b\",null,true,null],[\"aux_E.R. SANTA EULALIA_Covasa\",5.25,\"b\",null,true,0.0],[\"aux_E.R. SANTA EULALIA_E.T RIERAL\",5.25,\"b\",null,true,0.0],[\"E.T COVASA\",5.25,\"b\",null,true,0.4],[\"E.T RIERAL\",5.25,\"b\",null,true,0.4],[\"E.T TORRAS\",5.25,\"b\",null,true,0.63],[\"E.T REMEI\",5.25,\"b\",null,true,0.16],[\"P.T MASPONS\",5.25,\"b\",null,true,0.1],[\"E.T. LA BASTIDA\",5.25,\"b\",null,true,0.63],[\"E.T. TARRADELLAS\",5.25,\"b\",null,true,0.4],[\"aux_E.T REMEI_67071\",5.25,\"b\",null,true,0.0],[\"E.T LA SALA\",5.25,\"b\",null,true,0.4],[\"aux_67071\",5.25,\"b\",null,true,0.0],[\"E.T MARGENAT\",5.25,\"b\",null,true,0.4],[\"E.T. DANTA\",5.25,\"b\",null,true,0.16],[\"E.T BOSC DEL FORN\",5.25,\"b\",null,true,0.1]]}",
       "orient": "split",
       "dtype": {
         "name": "object",
@@ -13,7 +13,7 @@
         "type": "object",
         "zone": "object",
         "in_service": "bool",
-        "on_stub": "bool"
+        "sn_mva": "float64"
       },
       "is_multiindex": false,
       "is_multicolumn": false
@@ -262,7 +262,7 @@
     "line": {
       "_module": "pandas.core.frame",
       "_class": "DataFrame",
-      "_object": "{\"columns\":[\"name\",\"std_type\",\"from_bus\",\"to_bus\",\"length_km\",\"r_ohm_per_km\",\"x_ohm_per_km\",\"c_nf_per_km\",\"g_us_per_km\",\"max_i_ka\",\"df\",\"parallel\",\"type\",\"in_service\",\"is_stub\"],\"index\":[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15],\"data\":[[\"SER-027_1\",null,0,1,0.036072579,0.262,0.102,0.0,0.0,0.3,1.0,1,null,false,true],[\"SER-052_1\",null,0,2,0.035060449,0.262,0.102,0.0,0.0,0.3,1.0,1,null,true,true],[\"SER-027_2\",null,1,3,0.278351923,0.3067,0.352,0.0,0.0,0.315,1.0,1,null,true,true],[\"SER-052_2\",null,2,4,0.465615694,0.614,0.374,0.0,0.0,0.2,1.0,1,null,true,true],[\"SER-009\",null,3,5,0.232625117,0.262,0.117,0.0,0.0,0.3,1.0,1,null,true,true],[\"SER-018\",null,3,6,0.504089923,0.161,0.109,0.0,0.0,0.415,1.0,1,null,true,true],[\"SER-043\",null,4,7,0.360763082,0.614,0.374,0.0,0.0,0.2,1.0,1,null,true,true],[\"SER-044\",null,4,8,0.51168323,0.161,0.105,0.0,0.0,0.415,1.0,1,null,true,true],[\"SER-096\",null,9,5,0.408671144,0.161,0.105,0.0,0.0,0.415,1.0,1,null,true,true],[\"SER-031A_1\",null,6,10,0.035869737,0.161,0.109,0.0,0.0,0.415,1.0,1,null,true,true],[\"SER-093\",null,9,8,0.228786252999999,0.161,0.105,0.0,0.0,0.415,1.0,1,null,true,true],[\"SER-045\",null,9,11,0.115002852,0.161,0.105,0.0,0.0,0.415,1.0,1,null,true,true],[\"SER-031A_2\",null,10,12,0.386842342,0.3067,0.352,0.0,0.0,0.315,1.0,1,null,true,true],[\"SER-001\",null,11,13,0.375524265,1.2,0.134,0.0,0.0,0.145,1.0,1,null,true,true],[\"SER-076\",null,11,14,0.290307656,0.161,0.105,0.0,0.0,0.415,1.0,1,null,true,true],[\"SER-008\",null,13,15,0.199001341,0.262,0.117,0.0,0.0,0.3,1.0,1,null,true,true]]}",
+      "_object": "{\"columns\":[\"name\",\"std_type\",\"from_bus\",\"to_bus\",\"length_km\",\"r_ohm_per_km\",\"x_ohm_per_km\",\"c_nf_per_km\",\"g_us_per_km\",\"max_i_ka\",\"df\",\"parallel\",\"type\",\"in_service\"],\"index\":[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15],\"data\":[[\"SER-027_1\",null,0,1,0.036072579,0.262,0.102,0.0,0.0,0.3,1.0,1,\"UG\",true],[\"SER-052_1\",null,0,2,0.035060449,0.262,0.102,0.0,0.0,0.3,1.0,1,\"UG\",true],[\"SER-027_2\",null,1,3,0.278351923,0.3067,0.352,0.0,0.0,0.315,1.0,1,\"UG\",true],[\"SER-052_2\",null,2,4,0.465615694,0.614,0.374,0.0,0.0,0.2,1.0,1,\"OH\",true],[\"SER-009\",null,3,5,0.232625117,0.262,0.117,0.0,0.0,0.3,1.0,1,\"UG\",true],[\"SER-018\",null,3,6,0.504089923,0.161,0.105,0.0,0.0,0.415,1.0,1,\"OH\",true],[\"SER-043\",null,4,7,0.360763082,0.614,0.374,0.0,0.0,0.2,1.0,1,\"OH\",true],[\"SER-044\",null,4,8,0.51168323,0.161,0.105,0.0,0.0,0.415,1.0,1,\"OH\",true],[\"SER-096\",null,9,5,0.408671144,0.161,0.105,0.0,0.0,0.415,1.0,1,\"OH\",true],[\"SER-031A_1\",null,6,10,0.035869737,0.161,0.109,0.0,0.0,0.415,1.0,1,\"OH\",true],[\"SER-093\",null,9,8,0.228786252999999,0.161,0.105,0.0,0.0,0.415,1.0,1,\"OH\",true],[\"SER-045\",null,9,11,0.115002852,0.161,0.105,0.0,0.0,0.415,1.0,1,\"OH\",true],[\"SER-031A_2\",null,10,12,0.386842342,0.3067,0.352,0.0,0.0,0.315,1.0,1,\"UG\",true],[\"SER-001\",null,11,13,0.375524265,1.2,0.134,0.0,0.0,0.145,1.0,1,\"OH\",true],[\"SER-076\",null,11,14,0.290307656,0.161,0.105,0.0,0.0,0.415,1.0,1,\"OH\",true],[\"SER-008\",null,13,15,0.199001341,0.262,0.117,0.0,0.0,0.3,1.0,1,\"UG\",true]]}",
       "orient": "split",
       "dtype": {
         "name": "object",
@@ -278,8 +278,7 @@
         "df": "float64",
         "parallel": "uint32",
         "type": "object",
-        "in_service": "bool",
-        "is_stub": "bool"
+        "in_service": "bool"
       },
       "is_multiindex": false,
       "is_multicolumn": false

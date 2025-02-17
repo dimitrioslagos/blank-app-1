@@ -4,6 +4,7 @@ import configparser
 import time
 import pandas as pd
 import ast
+import plotly.io as pio
 from pf_toolbox import get_geodata,get_pv_power_curves,run_pfs, read_config, plot_network_with_lf_res,generate_boxplots,lines_df_presented, bus_df_presented
 import os
 from Service.Configuration.Topology.topology_tab_toolbox import main_code_planning_settings_topology, check_if_loops_exists,generate_diagram
@@ -12,11 +13,46 @@ from Service.Configuration.EquipmentTab.EquipmentTabTool import check_equipment_
 import numpy as np
 from optmization_toolbox import run_max_res_opt, get_scenarios, run_cost_optimization, create_cost_analysis_graph,run_investment_defferal_optimization
 import pandapower as pp
+import pandapower.plotting.plotly as plotly
+import json
 
 users = {
     "annel": "annel123"
 }
 
+
+def generate_generic_plot():
+    # lc = plotly.create_line_trace(netx, infofunc=netx.line.length_km.astype('str'),use_line_geodata=False)
+    # bc1 = plotly.create_bus_trace(netx, netx.bus.index, size=10, color="blue", infofunc=netx.bus.name,trace_name='bus')
+    # bc2 = plotly.create_bus_trace(netx, netx.ext_grid.bus.values, size=10, color="yellow", infofunc=netx.bus.name,trace_name='ext_grid')
+    # bc3 = plotly.create_bus_trace(netx, netx.load.bus.unique(), size=10, color="red", infofunc=netx.load.substat.values,trace_name='substation')
+    # bc4 = plotly.create_bus_trace(netx, netx.sgen.bus.unique(), size=10, color="green", infofunc=netx.sgen.substat.values,
+    #                               trace_name='PV')
+    # print('AAAAAAAAAAAAAAAAA')
+    # plotly.draw_traces(bc1+lc+bc2+bc3+bc4, figsize=1, aspectratio=(8, 6),filename='network_map.html',auto_open=False)
+    if st.session_state.topology_pandas_ready:
+        success_message("Topology Format is correct")
+        with open('network_map_hedno.html', 'r', encoding='utf-8') as file:
+            html_content = file.read()
+            components.html(html_content, width=1000, height=400, scrolling=True)
+        st.rerun()
+
+
+
+def is_json_file(uploaded_file):
+    """Checks if the uploaded file is a valid JSON."""
+    if uploaded_file is None:
+        return False
+
+    # Check file extension (not foolproof)
+    if uploaded_file.name.lower().endswith(".json"):
+        try:
+            json.load(uploaded_file)  # Try parsing JSON
+            uploaded_file.seek(0)  # Reset file pointer after reading
+            return True
+        except json.JSONDecodeError:
+            return False  # Invalid JSON
+    return False  # Wrong file extension
 
 def is_float(s):
     try:
@@ -36,7 +72,7 @@ def set_custom_styles():
         """
         <style>
         .stApp {
-            background-color: #f0f8ff; /* Light blue background */
+            background-color: #dfe3dc ; /* Light blue background */
             font-family: 'Arial', sans-serif; /* Set font to Arial */
         }
         
@@ -138,6 +174,7 @@ res_power_factor_limit = []
 flexibility_max_l = []
 res_flexibility_max = []
 year_of_investments = []
+budget_constraint = []
 """
 
     # Write the content to the file
@@ -201,6 +238,9 @@ def topology_file_upload_handler():
     else:
         if st.button('New topology file'):
             st.session_state.topology_file = None
+            st.session_state.topology_file_type = None
+            st.session_state.topology_pandas_ready = False
+            st.session_state.topology_pandas = None
             st.rerun()
 
 def print_topology_network():
@@ -233,26 +273,38 @@ def deal_with_loop():
 
 def topology_tab():
     topology_file_upload_handler()
-    print('edw')
-    print(st.session_state.topology_file)
-    if st.session_state.topology_file is not None:
-        net, msg = main_code_planning_settings_topology(st.session_state.topology_file)
-        if (net is not None):
-            if st.session_state.topology_pandas is None:
-                st.session_state.topology_pandas = net
-            deal_with_loop()
+    if (st.session_state.topology_file is not None):
+        if is_json_file(st.session_state.topology_file):
+            st.session_state.topology_file_type = 'json'
         else:
-            error_message(msg)
-            st.session_state.topology_pandas_ready = False
+            if st.session_state.topology_file_type != 'json':
+                net, msg = main_code_planning_settings_topology(st.session_state.topology_file)
+                st.session_state.topology_file_type = 'excel'
+                if (net is not None):
+                    if st.session_state.topology_pandas is None:
+                        st.session_state.topology_pandas = net
+                        pp.to_json(net,'topology.json')
+                    deal_with_loop()
+                else:
+                    error_message(msg)
+                    st.session_state.topology_pandas_ready = False
     if st.session_state.topology_pandas is not None:
-        if (st.session_state.topology_pandas.line.shape[0]>=st.session_state.topology_pandas.bus.shape[0])&st.session_state.topology_pandas_ready:
+        if (st.session_state.topology_pandas.line.shape[0]>=st.session_state.topology_pandas.bus.shape[0])&(st.session_state.topology_pandas_ready):
             if st.button('Modify de-energized lines'):
                 st.session_state.topology_pandas_ready = False
                 st.session_state.topology_pandas.line.in_service= True
                 st.rerun()
                 #deal_with_loop()
                 #print_topology_network()
-    print_topology_network()
+
+    if (st.session_state.topology_file_type!='json'):
+        print_topology_network()
+    else:
+        with open('network_map_hedno.html', 'r', encoding='utf-8') as file:
+            html_content = file.read()
+            components.html(html_content, width=1000, height=400, scrolling=True)
+
+
 
 
 
@@ -493,16 +545,16 @@ def planning_tab():
         f'color: black; font-size: 20px; '
         f'font-weight: bold;">{"Scenario Planning"}</h1>',
         unsafe_allow_html=True)
-    save_opt_settings()
     Objective = st.selectbox("Select Optimization Goal", ['Cost Reduction', 'Investment Deferral',
                                                           'Optimal Investment for RES maximization'])
+    save_opt_settings(Objective)
     check_if_ready_to_opt(Objective)
     if st.session_state.opt_settings_ready:
         tabs_opt = st.tabs(['Optimization Parameters','Run Optimization'])
         with tabs_opt[0]:
             tab_opt_parameters(Objective)
         with tabs_opt[1]:
-            if st.session_state.opt_scenarios is None:
+            if (st.session_state.opt_scenarios is None)&(Objective!='Optimal Investment for RES maximization'):
                 if st.button('Compute Optimization Scenarios'):
                     settings = read_config(filename='configs/' + st.session_state.project_name + '.cfg')
                     PVs = get_pv_power_curves(settings, get_geodata(st.session_state.topology_pandas))
@@ -524,7 +576,10 @@ def planning_tab():
                                   encoding='utf-8') as file:
                             html_content = file.read()
                         components.html(html_content, width=1000, height=400, scrolling=True)
-                        st.write(upgrades)
+                        if upgrades.shape[0]==0:
+                            st.write('No upgrades required')
+                        else:
+                            st.write(upgrades)
             if Objective=='Investment Deferral':
                 # Convert and write JSON object to file
                 if st.session_state.sol_opt_ec is None:
@@ -541,7 +596,10 @@ def planning_tab():
                                   encoding='utf-8') as file:
                             html_content = file.read()
                         components.html(html_content, width=1000, height=400, scrolling=True)
-                        st.write(upgrades)
+                        if upgrades.shape[0] == 0:
+                            st.write('No upgrades required')
+                        else:
+                            st.write(upgrades)
             if Objective=='Optimal Investment for RES maximization':
                 # Convert and write JSON object to file
                 if st.session_state.sol_opt_ec is None:
@@ -552,10 +610,18 @@ def planning_tab():
                                                                  Line_types=st.session_state.line_types,
                                                                 Psub=st.session_state.P_curve,
                                                                 settings=settings, cosphi=st.session_state.cosphi)
-                        st.write("Calculated Upgrades")
-                        st.write(upgrades)
+                        if upgrades.shape[0]>=1:
+                            st.write("Calculated Upgrades")
+                            st.write(upgrades)
+                        else:
+                            st.write("Network upgrades infeasible within the selected budget")
                         st.write("Calculated Hosting Capacity")
-                        st.write(sol)
+                        sol = pd.DataFrame(sol.values,index=sol.index,columns=['Hosting Capacity (kW)'])
+                        sol.loc['Total','Hosting Capacity (kW)']=sol['Hosting Capacity (kW)'].sum()
+                        sol = sol.sort_values(by=['Hosting Capacity (kW)'],ascending=False)
+                        st.write(sol[sol['Hosting Capacity (kW)']>=1])
+
+
     else:
         tabs_opt = st.tabs(['Optimization Parameters'])
         with tabs_opt[0]:
@@ -825,9 +891,10 @@ def check_if_ready_to_opt(Objective):
         if settings['res_flexibility_max'] == '[]':
             st.session_state.opt_settings_ready = False
             return 0
+        st.session_state.opt_settings_ready = True
 
 
-def save_opt_settings():
+def save_opt_settings(Objective):
     if st.button('Save Planning settings'):
         # Check if file exists
         if not os.path.exists('configs/' + st.session_state.project_name + '.cfg'):
@@ -837,50 +904,58 @@ def save_opt_settings():
         generate_empty_cfg('configs/' + st.session_state.project_name + '.cfg')
         config = configparser.ConfigParser()
         config.read('configs/' + st.session_state.project_name + '.cfg')
-        if st.session_state.flexibility_cost is not None:
-            config.set('Settings', 'flexibility_cost', value=st.session_state.flexibility_cost)
-        if st.session_state.energy_cost is not None:
-            config.set('Settings', 'energy_cost', value=st.session_state.energy_cost)
-        if st.session_state.flexibility_cost is not None:
-            config.set('Settings', 'flexibility_cost', value=st.session_state.flexibility_cost)
-        if st.session_state.load_shedding_cost is not None:
-            config.set('Settings', 'load_shedding_cost', value=st.session_state.load_shedding_cost)
-        if st.session_state.curtailment_cost is not None:
-            config.set('Settings', 'res_curtailment_cost', value=st.session_state.curtailment_cost)
-        if st.session_state.interest_rate is not None:
-            config.set('Settings', 'interest_rate', value=st.session_state.interest_rate)
-        if st.session_state.year_of_investments is not None:
-            config.set('Settings', 'year_of_investments', value=st.session_state.year_of_investments)
-        if st.session_state.inflation_rate is not None:
-            config.set('Settings', 'inflation_rate', value=st.session_state.inflation_rate)
-        if st.session_state.BES_max_P is not None:
-            config.set('Settings', 'maximum_battery_storage_size_mw', value=st.session_state.BES_max_P)
-        if st.session_state.BES_min_P is not None:
-            config.set('Settings', 'minimum_battery_storage_size_mw', value=st.session_state.BES_min_P)
-        if st.session_state.soc_max is not None:
-            config.set('Settings', 'soc_max_percentage', value=st.session_state.soc_max)
-        if st.session_state.soc_min is not None:
-            config.set('Settings', 'soc_min_percentage', value=st.session_state.soc_min)
-        if st.session_state.soc_init is not None:
-            config.set('Settings', 'soc_init', value=st.session_state.soc_init)
-        if st.session_state.BES_cost_E is not None:
-            config.set('Settings', 'battery_system_cost_energy_mwh', value=st.session_state.BES_cost_E)
-        if st.session_state.BES_cost_P is not None:
-            config.set('Settings', 'battery_system_cost_power_mw', value=st.session_state.BES_cost_P)
-        if st.session_state.BES_efficiency is not None:
-            config.set('Settings', 'charge_discharge_efficiency', value=st.session_state.BES_efficiency)
-        if st.session_state.BES_cosphi is not None:
-            config.set('Settings', 'cosphi_b', value=st.session_state.BES_cosphi)
-        if st.session_state.locations_BES is not None:
-            config.set('Settings', 'candidate_storage_bus', value=str(st.session_state.locations_BES))
-        if st.session_state.RES_PF_max is not None:
-            config.set('Settings', 'res_power_factor_limit', value=st.session_state.RES_PF_max)
-        if st.session_state.Load_flex_max is not None:
-            config.set('Settings', 'flexibility_max_l', value=st.session_state.Load_flex_max)
-        if st.session_state.RES_flex_max is not None:
-            config.set('Settings', 'res_flexibility_max', value=st.session_state.RES_flex_max)
-        if st.session_state.budget_constraint is not None:
-            config.set('Settings', 'budget_constraint', value=st.session_state.budget_constraint)
+        if Objective != 'Optimal Investment for RES maximization':
+            if st.session_state.flexibility_cost is not None:
+                config.set('Settings', 'flexibility_cost', value=st.session_state.flexibility_cost)
+            if st.session_state.energy_cost is not None:
+                config.set('Settings', 'energy_cost', value=st.session_state.energy_cost)
+            if st.session_state.flexibility_cost is not None:
+                config.set('Settings', 'flexibility_cost', value=st.session_state.flexibility_cost)
+            if st.session_state.load_shedding_cost is not None:
+                config.set('Settings', 'load_shedding_cost', value=st.session_state.load_shedding_cost)
+            if st.session_state.curtailment_cost is not None:
+                config.set('Settings', 'res_curtailment_cost', value=st.session_state.curtailment_cost)
+            if st.session_state.interest_rate is not None:
+                config.set('Settings', 'interest_rate', value=st.session_state.interest_rate)
+            if st.session_state.year_of_investments is not None:
+                config.set('Settings', 'year_of_investments', value=st.session_state.year_of_investments)
+            if st.session_state.inflation_rate is not None:
+                config.set('Settings', 'inflation_rate', value=st.session_state.inflation_rate)
+            if st.session_state.BES_max_P is not None:
+                config.set('Settings', 'maximum_battery_storage_size_mw', value=st.session_state.BES_max_P)
+            if st.session_state.BES_min_P is not None:
+                config.set('Settings', 'minimum_battery_storage_size_mw', value=st.session_state.BES_min_P)
+            if st.session_state.soc_max is not None:
+                config.set('Settings', 'soc_max_percentage', value=st.session_state.soc_max)
+            if st.session_state.soc_min is not None:
+                config.set('Settings', 'soc_min_percentage', value=st.session_state.soc_min)
+            if st.session_state.soc_init is not None:
+                config.set('Settings', 'soc_init', value=st.session_state.soc_init)
+            if st.session_state.BES_cost_E is not None:
+                config.set('Settings', 'battery_system_cost_energy_mwh', value=st.session_state.BES_cost_E)
+            if st.session_state.BES_cost_P is not None:
+                config.set('Settings', 'battery_system_cost_power_mw', value=st.session_state.BES_cost_P)
+            if st.session_state.BES_efficiency is not None:
+                config.set('Settings', 'charge_discharge_efficiency', value=st.session_state.BES_efficiency)
+            if st.session_state.BES_cosphi is not None:
+                config.set('Settings', 'cosphi_b', value=st.session_state.BES_cosphi)
+            if st.session_state.locations_BES is not None:
+                config.set('Settings', 'candidate_storage_bus', value=str(st.session_state.locations_BES))
+            if st.session_state.RES_PF_max is not None:
+                config.set('Settings', 'res_power_factor_limit', value=st.session_state.RES_PF_max)
+            if st.session_state.Load_flex_max is not None:
+                config.set('Settings', 'flexibility_max_l', value=st.session_state.Load_flex_max)
+            if st.session_state.RES_flex_max is not None:
+                config.set('Settings', 'res_flexibility_max', value=st.session_state.RES_flex_max)
+        else:
+            if st.session_state.RES_PF_max is not None:
+                config.set('Settings', 'flexibility_max_l', value=st.session_state.Load_flex_max)
+            if st.session_state.RES_flex_max is not None:
+                config.set('Settings', 'res_flexibility_max', value=st.session_state.RES_flex_max)
+            if st.session_state.budget_constraint is not None:
+                config.set('Settings', 'budget_constraint', value=st.session_state.budget_constraint)
+            if st.session_state.RES_PF_max is not None:
+                config.set('Settings', 'res_power_factor_limit', value=st.session_state.RES_PF_max)
 
         with open('configs/' + st.session_state.project_name + '.cfg', 'w') as configfile:
             config.write(configfile)
@@ -1049,6 +1124,7 @@ def PF_tab():
             plot_network_with_lf_res(net=st.session_state.topology_pandas, year_results=st.session_state.year_results, settings = settings)
             st.session_state.lines_df = lines_df_presented(st.session_state.topology_pandas, st.session_state.year_results)
             st.session_state.bus_df = bus_df_presented(st.session_state.topology_pandas, st.session_state.year_results)
+            st.rerun()
     if (st.session_state.bus_df is not None) & (st.session_state.lines_df is not None):
         tabs_load_flow = st.tabs(['Analysis','Boxplot Graphs','Map'])
         with tabs_load_flow[0]:
